@@ -1,8 +1,8 @@
 const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
 const ext_ID = 'tst-wheel_and_double@dontpokebadgers.com'
-var scrollingInverted = null;
-var doubleClickEnabled = null;
-var doubleClickSpeed = null;
+var scrollingInverted = false;
+var doubleClickEnabled = true;
+var doubleClickSpeed = '250';
 var previousClickTime = 0;
 var previousTabId = null;
 
@@ -37,11 +37,18 @@ async function loadOptions(options) {
   }
 }
 
+async function reloadOptions(options) {
+  scrollingInverted = options.scrollingInverted.newValue;
+  doubleClickEnabled = options.doubleClickEnabled.newValue;
+  doubleClickSpeed = options.doubleClickSpeed.newValue;
+  //console.log(options);
+}
+
 async function createOptions() {
   browser.storage.local.set({
-    scrollingInverted: false,
-    doubleClickEnabled: true,
-    doubleClickSpeed: "250"
+    scrollingInverted: scrollingInverted,
+    doubleClickEnabled: doubleClickEnabled,
+    doubleClickSpeed: doubleClickSpeed
   });
   //console.log("creating default options");
   var reloadingOptions = browser.storage.local.get();
@@ -63,9 +70,10 @@ initialRegisterToTST();
 disableScroll();
 var initalizingOptions = browser.storage.local.get();
 initalizingOptions.then(loadOptions);
+browser.storage.onChanged.addListener(reloadOptions);
 browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
-  var refreshingOptions = browser.storage.local.get();
-  refreshingOptions.then(loadOptions);
+//  var refreshingOptions = browser.storage.local.get();
+//  refreshingOptions.then(loadOptions);
   switch (aSender.id) {
     case kTST_ID:
       //console.log(aMessage.type)
@@ -81,7 +89,7 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           var d = new Date();
           currentClickTime = d.getTime();
           clickDelta = currentClickTime - previousClickTime;
-          if (clickDelta < doubleClickSpeed && previousTabId == aMessage.tab.id) {
+          if (clickDelta < parseInt(doubleClickSpeed) && previousTabId == aMessage.tab.id) {
             //console.log('double click on tab');
             reloadTab(aMessage.tab.id);
           }
