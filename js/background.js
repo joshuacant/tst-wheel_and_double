@@ -89,7 +89,7 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           var d = new Date();
           currentClickTime = d.getTime();
           clickDelta = currentClickTime - previousClickTime;
-          if (clickDelta < parseInt(doubleClickSpeed) && previousTabId == aMessage.tab.id) {
+          if (clickDelta < parseInt(doubleClickSpeed) && previousTabId == aMessage.tab.id && aMessage.button == 0) {
             //console.log('double click on tab');
             reloadTab(aMessage.tab.id);
           }
