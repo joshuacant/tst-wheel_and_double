@@ -1,3 +1,4 @@
+"use strict";
 const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
 const ext_ID = 'tst-wheel_and_double@dontpokebadgers.com'
 var scrollingInverted = false;
@@ -6,9 +7,9 @@ var doubleClickSpeed = '250';
 var previousClickTime = 0;
 var previousTabId = null;
 
-function initialRegisterToTST() {
-  setTimeout(registerToTST, 3000);
-}
+//function initialRegisterToTST() {
+//  setTimeout(registerToTST, 100);
+//}
 
 async function registerToTST() {
   var success = await browser.runtime.sendMessage(kTST_ID, {
@@ -16,12 +17,9 @@ async function registerToTST() {
     name: ext_ID,
     //style: '.tab {color: green;}'
   })
-//  if (!success) {
-//    console.log(ext_ID+" unable to register.");
-//    }
-//  else {
-//    console.log(ext_ID+" registered sucessfully.");
-//  }
+  if (success) {
+    await disableScroll();
+  }
 }
 
 async function loadOptions(options) {
@@ -66,14 +64,12 @@ async function reloadTab(tabId) {
   await browser.tabs.reload(tabId);
 }
 
-initialRegisterToTST();
-disableScroll();
+//initialRegisterToTST();
+registerToTST();
 var initalizingOptions = browser.storage.local.get();
 initalizingOptions.then(loadOptions);
 browser.storage.onChanged.addListener(reloadOptions);
 browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
-//  var refreshingOptions = browser.storage.local.get();
-//  refreshingOptions.then(loadOptions);
   switch (aSender.id) {
     case kTST_ID:
       //console.log(aMessage.type)
@@ -81,14 +77,13 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
         case 'ready':
           //console.log("re-registering");
           registerToTST();
-          disableScroll();
           break;
         case 'tab-clicked':
           //console.log(doubleClickEnabled);
           if (doubleClickEnabled == false) { break; }
           var d = new Date();
-          currentClickTime = d.getTime();
-          clickDelta = currentClickTime - previousClickTime;
+          var currentClickTime = d.getTime();
+          var clickDelta = currentClickTime - previousClickTime;
           if (clickDelta < parseInt(doubleClickSpeed) && previousTabId == aMessage.tab.id && aMessage.button == 0) {
             //console.log('double click on tab');
             reloadTab(aMessage.tab.id);
@@ -101,12 +96,6 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           var activeTabPosition = null;
           for (var iTab = 0; iTab < aMessage.tabs.length; ++iTab) {
             if (aMessage.tabs[iTab].active == true) { activeTabPosition = iTab; }
-            //for (var iState = 0; iState < aMessage.tabs[iTab].states.length; ++iState) {
-              //if (aMessage.tabs[iTab].states[iState]  == 'active') {
-                //activeTabPosition = iTab;
-                //break;
-              //}
-            //}
             if (activeTabPosition == iTab) { break; }
           }
           //console.log(activeTabPosition);
@@ -136,7 +125,6 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
               //console.log('MOVING: to the end');
             }
             else {
-              //console.log(activeTabPosition+tabDelta);
               browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true })
               //console.log('MOVING: next one up');
             }
