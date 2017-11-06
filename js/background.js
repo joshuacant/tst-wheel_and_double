@@ -2,6 +2,7 @@
 const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
 const ext_ID = 'tst-wheel_and_double@dontpokebadgers.com'
 var scrollingInverted = false;
+var skipCollapsed = true;
 var doubleClickEnabled = true;
 var doubleClickSpeed = '250';
 var previousClickTime = 0;
@@ -29,6 +30,7 @@ async function loadOptions(options) {
   }
   else {
     scrollingInverted = options.scrollingInverted;
+    skipCollapsed = options.skipCollapsed;
     doubleClickEnabled = options.doubleClickEnabled;
     doubleClickSpeed = options.doubleClickSpeed;
     //console.log(options);
@@ -37,6 +39,7 @@ async function loadOptions(options) {
 
 async function reloadOptions(options) {
   scrollingInverted = options.scrollingInverted.newValue;
+  skipCollapsed = options.skipCollapsed.newValue;
   doubleClickEnabled = options.doubleClickEnabled.newValue;
   doubleClickSpeed = options.doubleClickSpeed.newValue;
   //console.log(options);
@@ -45,6 +48,7 @@ async function reloadOptions(options) {
 async function createOptions() {
   browser.storage.local.set({
     scrollingInverted: scrollingInverted,
+    skipCollapsed: skipCollapsed,
     doubleClickEnabled: doubleClickEnabled,
     doubleClickSpeed: doubleClickSpeed
   });
@@ -100,33 +104,56 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           }
           //console.log(activeTabPosition);
           var tabDelta = null;
+          var validTabFound = true;
           var mouseDelta = aMessage.deltaY;
           //console.log(scrollingInverted);
           if (scrollingInverted) { mouseDelta = mouseDelta * -1; }
-          
+          if (skipCollapsed) {var validTabFound = false;}
           if (mouseDelta > 0) {
             //console.log('down');
             tabDelta = 1;
             if (activeTabPosition == aMessage.tabs.length-1) {
               browser.tabs.update(aMessage.tabs[0].id, { active: true });
-              //console.log('MOVING: back to the start');
+              //console.log('MOVING: start');
             }
             else {
               //console.log(activeTabPosition+tabDelta);
-              browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true })
-              //console.log('MOVING: next one down');
+              while (validTabFound == false ) {
+                if (activeTabPosition + tabDelta > aMessage.tabs.length-1) {
+                  tabDelta = activeTabPosition * -1;
+                  break;
+                }
+                if (aMessage.tabs[(activeTabPosition+tabDelta)].states.indexOf('collapsed') != -1) {
+                  tabDelta++;
+                }
+                else { validTabFound = true; }
+              }
+              browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true });
+              //console.log('MOVING: down');
             }
           }
           if (mouseDelta < 0) {
             //console.log('up');
             tabDelta = -1;
             if (activeTabPosition == 0) {
-              browser.tabs.update(aMessage.tabs[aMessage.tabs.length-1].id, { active: true });
-              //console.log('MOVING: to the end');
+              while (validTabFound == false ) {
+                if (aMessage.tabs[(aMessage.tabs.length+tabDelta)].states.indexOf('collapsed') != -1) {
+                  tabDelta--;
+                }
+                else { validTabFound = true; }
+              }
+              browser.tabs.update(aMessage.tabs[aMessage.tabs.length+tabDelta].id, { active: true });
+              //console.log('MOVING: end');
             }
             else {
-              browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true })
-              //console.log('MOVING: next one up');
+              while (validTabFound == false ) {
+                if (aMessage.tabs[(activeTabPosition+tabDelta)].states.indexOf('collapsed') != -1) {
+                  tabDelta--;
+                }
+                else { validTabFound = true; }
+              }
+              browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true });
+              //console.log('MOVING: up');
             }
           }
           return Promise.resolve(true);
