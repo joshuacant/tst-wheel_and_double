@@ -1,6 +1,6 @@
 "use strict";
 const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
-const ext_ID = 'tst-wheel_and_double@dontpokebadgers.com'
+const ext_ID = 'tst-wheel_and_double@dontpokebadgers.com';
 var scrollingInverted = false;
 var skipCollapsed = true;
 var doubleClickEnabled = true;
@@ -8,17 +8,15 @@ var doubleClickSpeed = '250';
 var previousClickTime = 0;
 var previousTabId = null;
 
-//function initialRegisterToTST() {
-//  setTimeout(registerToTST, 100);
-//}
-
 async function registerToTST() {
   var success = await browser.runtime.sendMessage(kTST_ID, {
     type: 'register-self',
     name: ext_ID,
     //style: '.tab {color: green;}'
-  })
+  });
   if (success) {
+    //console.log(ext_ID + " successfully registered");
+    clearTimeout(registrationTimer);
     await disableScroll();
   }
 }
@@ -68,8 +66,7 @@ async function reloadTab(tabId) {
   await browser.tabs.reload(tabId);
 }
 
-//initialRegisterToTST();
-registerToTST();
+var registrationTimer = setInterval(registerToTST, 2000);
 var initalizingOptions = browser.storage.local.get();
 initalizingOptions.then(loadOptions);
 browser.storage.onChanged.addListener(reloadOptions);

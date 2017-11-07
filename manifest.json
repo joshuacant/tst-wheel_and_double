@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "TST Mouse Wheel and Double Click",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Allows tab changing by mousewheel and reload on double click.",
   "homepage_url": "http://dontpokebadgers.com/",
   "icons": {
@@ -15,7 +15,8 @@
   ],
 
   "options_ui": {
-    "page": "options/options.html"
+    "page": "options/options.html",
+    "browser_style": true
   },
 
   "background": {
