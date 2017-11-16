@@ -1,6 +1,7 @@
 function loadOptions() {
   function setOptions(options) {
     //console.log(options);
+    document.querySelector("#disableScrolling").checked = options.disableScrolling;
     document.querySelector("#scrollingInverted").checked = options.scrollingInverted;
     document.querySelector("#skipCollapsed").checked = options.skipCollapsed;
     document.querySelector("#skipCycling").checked = options.skipCycling;
@@ -14,6 +15,7 @@ function loadOptions() {
 function saveOptions(e) {
   e.preventDefault();
   browser.storage.local.set({
+    disableScrolling: document.querySelector("#disableScrolling").checked,
     scrollingInverted: document.querySelector("#scrollingInverted").checked,
     skipCollapsed: document.querySelector("#skipCollapsed").checked,
     skipCycling: document.querySelector("#skipCycling").checked,

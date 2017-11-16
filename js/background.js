@@ -1,6 +1,7 @@
 "use strict";
 const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
 const ext_ID = 'tst-wheel_and_double@dontpokebadgers.com';
+var disableScrolling = false;
 var scrollingInverted = false;
 var skipCollapsed = true;
 var skipCycling = false;
@@ -28,6 +29,7 @@ async function loadOptions(options) {
     createOptions();
   }
   else {
+    disableScrolling = options.disableScrolling;
     scrollingInverted = options.scrollingInverted;
     skipCollapsed = options.skipCollapsed;
     skipCycling = options.skipCycling;
@@ -38,16 +40,20 @@ async function loadOptions(options) {
 }
 
 async function reloadOptions(options) {
+  disableScrolling = options.disableScrolling.newValue;
   scrollingInverted = options.scrollingInverted.newValue;
   skipCollapsed = options.skipCollapsed.newValue;
   skipCycling = options.skipCycling.newValue;
   doubleClickEnabled = options.doubleClickEnabled.newValue;
   doubleClickSpeed = options.doubleClickSpeed.newValue;
+
+  if (disableScrolling) { enableScroll(); } else { disableScroll(); }
   //console.log(options);
 }
 
 async function createOptions() {
   browser.storage.local.set({
+    disableScrolling: disableScrolling,
     scrollingInverted: scrollingInverted,
     skipCollapsed: skipCollapsed,
     skipCycling: skipCycling,
@@ -62,6 +68,13 @@ async function createOptions() {
 async function disableScroll() {
   var success = await browser.runtime.sendMessage(kTST_ID, {
     type: 'scroll-lock'
+  });
+  //console.log(success);
+}
+
+async function enableScroll() {
+  var success = await browser.runtime.sendMessage(kTST_ID, {
+    type: 'scroll-unlock'
   });
   //console.log(success);
 }
@@ -98,6 +111,7 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           break;
         case 'scrolled':
           //console.log(aMessage.tabs)
+          if (disableScrolling == true) { break; }
           var activeTabPosition = null;
           for (var iTab = 0; iTab < aMessage.tabs.length; ++iTab) {
             if (aMessage.tabs[iTab].active == true) { 
@@ -169,10 +183,6 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
       break;
   }
 });
-
-//var success = await browser.runtime.sendMessage(kTST_ID, {
-//  type: 'scroll-unlock'
-//});
 
 //var success = await browser.runtime.sendMessage(kTST_ID, {
 //  type: 'unregister-self'
