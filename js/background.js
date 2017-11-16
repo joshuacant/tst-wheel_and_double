@@ -3,6 +3,7 @@ const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
 const ext_ID = 'tst-wheel_and_double@dontpokebadgers.com';
 var scrollingInverted = false;
 var skipCollapsed = true;
+var skipCycling = false;
 var doubleClickEnabled = true;
 var doubleClickSpeed = '250';
 var previousClickTime = 0;
@@ -29,6 +30,7 @@ async function loadOptions(options) {
   else {
     scrollingInverted = options.scrollingInverted;
     skipCollapsed = options.skipCollapsed;
+    skipCycling = options.skipCycling;
     doubleClickEnabled = options.doubleClickEnabled;
     doubleClickSpeed = options.doubleClickSpeed;
     //console.log(options);
@@ -38,6 +40,7 @@ async function loadOptions(options) {
 async function reloadOptions(options) {
   scrollingInverted = options.scrollingInverted.newValue;
   skipCollapsed = options.skipCollapsed.newValue;
+  skipCycling = options.skipCycling.newValue;
   doubleClickEnabled = options.doubleClickEnabled.newValue;
   doubleClickSpeed = options.doubleClickSpeed.newValue;
   //console.log(options);
@@ -47,6 +50,7 @@ async function createOptions() {
   browser.storage.local.set({
     scrollingInverted: scrollingInverted,
     skipCollapsed: skipCollapsed,
+    skipCycling: skipCycling,
     doubleClickEnabled: doubleClickEnabled,
     doubleClickSpeed: doubleClickSpeed
   });
@@ -96,8 +100,10 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           //console.log(aMessage.tabs)
           var activeTabPosition = null;
           for (var iTab = 0; iTab < aMessage.tabs.length; ++iTab) {
-            if (aMessage.tabs[iTab].active == true) { activeTabPosition = iTab; }
-            if (activeTabPosition == iTab) { break; }
+            if (aMessage.tabs[iTab].active == true) { 
+              activeTabPosition = iTab;
+              break;
+            }
           }
           //console.log(activeTabPosition);
           var tabDelta = null;
@@ -105,15 +111,18 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           var mouseDelta = aMessage.deltaY;
           //console.log(scrollingInverted);
           if (scrollingInverted) { mouseDelta = mouseDelta * -1; }
-          if (skipCollapsed) {var validTabFound = false;}
+          if (skipCollapsed) { validTabFound = false; }
           if (mouseDelta > 0) {
             //console.log('down');
             tabDelta = 1;
             if (activeTabPosition == aMessage.tabs.length-1) {
-              browser.tabs.update(aMessage.tabs[0].id, { active: true });
-              //console.log('MOVING: start');
+              //console.log('MOVING: cycle to start');
+              if (skipCycling == false) {
+                browser.tabs.update(aMessage.tabs[0].id, { active: true });
+              }
             }
             else {
+              //console.log('MOVING: down');
               //console.log(activeTabPosition+tabDelta);
               while (validTabFound == false ) {
                 if (activeTabPosition + tabDelta > aMessage.tabs.length-1) {
@@ -126,23 +135,25 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
                 else { validTabFound = true; }
               }
               browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true });
-              //console.log('MOVING: down');
             }
           }
           if (mouseDelta < 0) {
             //console.log('up');
             tabDelta = -1;
             if (activeTabPosition == 0) {
-              while (validTabFound == false ) {
-                if (aMessage.tabs[(aMessage.tabs.length+tabDelta)].states.indexOf('collapsed') != -1) {
-                  tabDelta--;
+              //console.log('MOVING: cycle to end');
+              if (skipCycling == false) {
+                while (validTabFound == false ) {
+                  if (aMessage.tabs[(aMessage.tabs.length+tabDelta)].states.indexOf('collapsed') != -1) {
+                    tabDelta--;
+                  }
+                  else { validTabFound = true; }
                 }
-                else { validTabFound = true; }
+                browser.tabs.update(aMessage.tabs[aMessage.tabs.length+tabDelta].id, { active: true });
               }
-              browser.tabs.update(aMessage.tabs[aMessage.tabs.length+tabDelta].id, { active: true });
-              //console.log('MOVING: end');
             }
             else {
+              //console.log('MOVING: up');
               while (validTabFound == false ) {
                 if (aMessage.tabs[(activeTabPosition+tabDelta)].states.indexOf('collapsed') != -1) {
                   tabDelta--;
@@ -150,7 +161,6 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
                 else { validTabFound = true; }
               }
               browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true });
-              //console.log('MOVING: up');
             }
           }
           return Promise.resolve(true);

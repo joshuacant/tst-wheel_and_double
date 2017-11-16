@@ -3,6 +3,7 @@ function loadOptions() {
     //console.log(options);
     document.querySelector("#scrollingInverted").checked = options.scrollingInverted;
     document.querySelector("#skipCollapsed").checked = options.skipCollapsed;
+    document.querySelector("#skipCycling").checked = options.skipCycling;
     document.querySelector("#doubleClickEnabled").checked = options.doubleClickEnabled;
     document.querySelector("#doubleClickSpeed").value = options.doubleClickSpeed;
   }
@@ -15,6 +16,7 @@ function saveOptions(e) {
   browser.storage.local.set({
     scrollingInverted: document.querySelector("#scrollingInverted").checked,
     skipCollapsed: document.querySelector("#skipCollapsed").checked,
+    skipCycling: document.querySelector("#skipCycling").checked,
     doubleClickEnabled: document.querySelector("#doubleClickEnabled").checked,
     doubleClickSpeed: document.querySelector("#doubleClickSpeed").value
   });
