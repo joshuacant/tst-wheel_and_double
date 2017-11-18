@@ -97,7 +97,6 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           registerToTST();
           break;
         case 'tab-clicked':
-          //console.log(doubleClickEnabled);
           if (doubleClickEnabled == false) { break; }
           var d = new Date();
           var currentClickTime = d.getTime();
@@ -123,7 +122,6 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
           var tabDelta = null;
           var validTabFound = true;
           var mouseDelta = aMessage.deltaY;
-          //console.log(scrollingInverted);
           if (scrollingInverted) { mouseDelta = mouseDelta * -1; }
           if (skipCollapsed) { validTabFound = false; }
           if (mouseDelta > 0) {
@@ -137,10 +135,11 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
             }
             else {
               //console.log('MOVING: down');
-              //console.log(activeTabPosition+tabDelta);
               while (validTabFound == false ) {
+                //console.log(activeTabPosition,tabDelta,aMessage.tabs.length);
                 if (activeTabPosition + tabDelta > aMessage.tabs.length-1) {
-                  tabDelta = activeTabPosition * -1;
+                  if (skipCycling == true && skipCollapsed == true) { tabDelta = 0; }
+                  else { tabDelta = activeTabPosition * -1; }
                   break;
                 }
                 if (aMessage.tabs[(activeTabPosition+tabDelta)].states.indexOf('collapsed') != -1) {
