@@ -167,7 +167,7 @@ browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
             }
             else {
               //console.log('MOVING: up');
-              while (validTabFound == false ) {
+              while (validTabFound == false) {
                 if (aMessage.tabs[(activeTabPosition+tabDelta)].states.indexOf('collapsed') != -1) {
                   tabDelta--;
                 }
