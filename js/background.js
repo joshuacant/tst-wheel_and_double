@@ -11,14 +11,16 @@ var previousClickTime = 0;
 var previousTabId = null;
 
 async function registerToTST() {
+  var self = await browser.management.getSelf();  
   var success = await browser.runtime.sendMessage(kTST_ID, {
     type: 'register-self',
-    name: ext_ID,
+    name: self.id,
+    //name: ext_ID,
     //style: '.tab {color: green;}'
   });
   if (success) {
     //console.log(ext_ID + " successfully registered");
-    clearTimeout(registrationTimer);
+    //clearTimeout(registrationTimer);
     await disableScroll();
   }
 }
@@ -83,7 +85,8 @@ async function reloadTab(tabId) {
   await browser.tabs.reload(tabId);
 }
 
-var registrationTimer = setInterval(registerToTST, 2000);
+//var registrationTimer = setInterval(registerToTST, 2000);
+registerToTST();
 var initalizingOptions = browser.storage.local.get();
 initalizingOptions.then(loadOptions);
 browser.storage.onChanged.addListener(reloadOptions);
