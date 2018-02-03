@@ -14,7 +14,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await registerToTST();
 
-    const initalizingOptions = await browser.storage.local.get();
+    const initalizingOptions = browser.storage.local.get();
     initalizingOptions.then(loadOptions);
 
     browser.storage.onChanged.addListener(reloadOptions);
