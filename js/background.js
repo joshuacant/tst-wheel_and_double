@@ -1,191 +1,165 @@
 "use strict";
 const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
-const ext_ID = 'tst-wheel_and_double@dontpokebadgers.com';
-var disableScrolling = false;
-var scrollingInverted = false;
-var skipCollapsed = true;
-var skipCycling = false;
-var doubleClickEnabled = true;
-var doubleClickSpeed = '250';
-var previousClickTime = 0;
-var previousTabId = null;
+let disableScrolling = false;
+let scrollingInverted = false;
+let skipCollapsed = true;
+let skipCycling = false;
+let doubleClickEnabled = true;
+let doubleClickSpeed = '250';
+let previousClickTime = 0;
+let previousTabId = null;
 
-async function registerToTST() {
-  var self = await browser.management.getSelf();  
-  var success = await browser.runtime.sendMessage(kTST_ID, {
-    type: 'register-self',
-    name: self.id,
-    //name: ext_ID,
-    //style: '.tab {color: green;}'
-  });
-  if (success) {
-    //console.log(ext_ID + " successfully registered");
-    //clearTimeout(registrationTimer);
-    await disableScroll();
-  }
-}
+window.addEventListener('DOMContentLoaded', async () => {
 
-async function loadOptions(options) {
-  if (Object.keys(options).length == 0) {
-    //console.log("no options");
-    createOptions();
-  }
-  else {
-    disableScrolling = options.disableScrolling;
-    scrollingInverted = options.scrollingInverted;
-    skipCollapsed = options.skipCollapsed;
-    skipCycling = options.skipCycling;
-    doubleClickEnabled = options.doubleClickEnabled;
-    doubleClickSpeed = options.doubleClickSpeed;
-    //console.log(options);
-  }
-}
+    await registerToTST();
 
-async function reloadOptions(options) {
-  disableScrolling = options.disableScrolling.newValue;
-  scrollingInverted = options.scrollingInverted.newValue;
-  skipCollapsed = options.skipCollapsed.newValue;
-  skipCycling = options.skipCycling.newValue;
-  doubleClickEnabled = options.doubleClickEnabled.newValue;
-  doubleClickSpeed = options.doubleClickSpeed.newValue;
+    const initalizingOptions = browser.storage.local.get();
 
-  if (disableScrolling) { enableScroll(); } else { disableScroll(); }
-  //console.log(options);
-}
+    initalizingOptions.then(loadOptions);
+    browser.storage.onChanged.addListener(reloadOptions);
 
-async function createOptions() {
-  browser.storage.local.set({
-    disableScrolling: disableScrolling,
-    scrollingInverted: scrollingInverted,
-    skipCollapsed: skipCollapsed,
-    skipCycling: skipCycling,
-    doubleClickEnabled: doubleClickEnabled,
-    doubleClickSpeed: doubleClickSpeed
-  });
-  //console.log("creating default options");
-  var reloadingOptions = browser.storage.local.get();
-  reloadingOptions.then(loadOptions);
-}
-
-async function disableScroll() {
-  var success = await browser.runtime.sendMessage(kTST_ID, {
-    type: 'scroll-lock'
-  });
-  //console.log(success);
-}
-
-async function enableScroll() {
-  var success = await browser.runtime.sendMessage(kTST_ID, {
-    type: 'scroll-unlock'
-  });
-  //console.log(success);
-}
-
-async function reloadTab(tabId) {
-  await browser.tabs.reload(tabId);
-}
-
-//var registrationTimer = setInterval(registerToTST, 2000);
-registerToTST();
-var initalizingOptions = browser.storage.local.get();
-initalizingOptions.then(loadOptions);
-browser.storage.onChanged.addListener(reloadOptions);
-browser.runtime.onMessageExternal.addListener((aMessage, aSender) => {
-  switch (aSender.id) {
-    case kTST_ID:
-      //console.log(aMessage.type)
-      switch (aMessage.type) {
-        case 'ready':
-          //console.log("re-registering");
-          registerToTST();
-          break;
-        case 'tab-clicked':
-          if (doubleClickEnabled == false) { break; }
-          var d = new Date();
-          var currentClickTime = d.getTime();
-          var clickDelta = currentClickTime - previousClickTime;
-          if (clickDelta < parseInt(doubleClickSpeed) && previousTabId == aMessage.tab.id && aMessage.button == 0) {
-            //console.log('double click on tab');
-            reloadTab(aMessage.tab.id);
-          }
-          previousClickTime = currentClickTime;
-          previousTabId = aMessage.tab.id;
-          break;
-        case 'scrolled':
-          //console.log(aMessage.tabs)
-          if (disableScrolling == true) { break; }
-          var activeTabPosition = null;
-          for (var iTab = 0; iTab < aMessage.tabs.length; ++iTab) {
-            if (aMessage.tabs[iTab].active == true) { 
-              activeTabPosition = iTab;
-              break;
-            }
-          }
-          //console.log(activeTabPosition);
-          var tabDelta = null;
-          var validTabFound = true;
-          var mouseDelta = aMessage.deltaY;
-          if (scrollingInverted) { mouseDelta = mouseDelta * -1; }
-          if (skipCollapsed) { validTabFound = false; }
-          if (mouseDelta > 0) {
-            //console.log('down');
-            tabDelta = 1;
-            if (activeTabPosition == aMessage.tabs.length-1) {
-              //console.log('MOVING: cycle to start');
-              if (skipCycling == false) {
-                browser.tabs.update(aMessage.tabs[0].id, { active: true });
-              }
-            }
-            else {
-              //console.log('MOVING: down');
-              while (validTabFound == false ) {
-                //console.log(activeTabPosition,tabDelta,aMessage.tabs.length);
-                if (activeTabPosition + tabDelta > aMessage.tabs.length-1) {
-                  if (skipCycling == true && skipCollapsed == true) { tabDelta = 0; }
-                  else { tabDelta = activeTabPosition * -1; }
-                  break;
-                }
-                if (aMessage.tabs[(activeTabPosition+tabDelta)].states.indexOf('collapsed') != -1) {
-                  tabDelta++;
-                }
-                else { validTabFound = true; }
-              }
-              browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true });
-            }
-          }
-          if (mouseDelta < 0) {
-            //console.log('up');
-            tabDelta = -1;
-            if (activeTabPosition == 0) {
-              //console.log('MOVING: cycle to end');
-              if (skipCycling == false) {
-                while (validTabFound == false ) {
-                  if (aMessage.tabs[(aMessage.tabs.length+tabDelta)].states.indexOf('collapsed') != -1) {
-                    tabDelta--;
-                  }
-                  else { validTabFound = true; }
-                }
-                browser.tabs.update(aMessage.tabs[aMessage.tabs.length+tabDelta].id, { active: true });
-              }
-            }
-            else {
-              //console.log('MOVING: up');
-              while (validTabFound == false) {
-                if (aMessage.tabs[(activeTabPosition+tabDelta)].states.indexOf('collapsed') != -1) {
-                  tabDelta--;
-                }
-                else { validTabFound = true; }
-              }
-              browser.tabs.update(aMessage.tabs[(activeTabPosition+tabDelta)].id, { active: true });
-            }
-          }
-          return Promise.resolve(true);
-          break;
-      }
-      break;
-  }
+    browser.runtime.onMessageExternal.addListener(onMessageExternal);
 });
 
-//var success = await browser.runtime.sendMessage(kTST_ID, {
-//  type: 'unregister-self'
-//});
+function onMessageExternal(aMessage, aSender) {
+    if (aSender.id === kTST_ID) {
+        switch (aMessage.type) {
+            case ('scrolled'):
+                return handleScroll(aMessage);
+            case ('tab-clicked'):
+                return handleTabClick(aMessage);
+            case ('ready'):
+                return registerToTST();
+            default:
+                return Promise.resolve(false);
+        }
+    }
+    return Promise.resolve(false);
+}
+
+async function registerToTST() {
+    try {
+        const self = await browser.management.getSelf();
+        const success = await browser.runtime.sendMessage(kTST_ID, {
+            type: 'register-self',
+            name: self.id,
+        });
+        if (success) {
+            disableScroll();
+        }
+        return Promise.resolve(true);
+    }
+    catch (ex) {
+        console.log(ex);
+    }
+}
+
+function loadOptions(options) {
+    if (Object.keys(options).length === 0) {
+        createOptions();
+    }
+    else {
+        disableScrolling = options.disableScrolling;
+        scrollingInverted = options.scrollingInverted;
+        skipCollapsed = options.skipCollapsed;
+        skipCycling = options.skipCycling;
+        doubleClickEnabled = options.doubleClickEnabled;
+        doubleClickSpeed = options.doubleClickSpeed;
+    }
+}
+
+function reloadOptions(options) {
+    disableScrolling = options.disableScrolling.newValue;
+    scrollingInverted = options.scrollingInverted.newValue;
+    skipCollapsed = options.skipCollapsed.newValue;
+    skipCycling = options.skipCycling.newValue;
+    doubleClickEnabled = options.doubleClickEnabled.newValue;
+    doubleClickSpeed = options.doubleClickSpeed.newValue;
+
+    if (disableScrolling) {
+        enableScroll();
+    } else {
+        disableScroll();
+    }
+}
+
+function createOptions() {
+    browser.storage.local.set({
+        disableScrolling: disableScrolling,
+        scrollingInverted: scrollingInverted,
+        skipCollapsed: skipCollapsed,
+        skipCycling: skipCycling,
+        doubleClickEnabled: doubleClickEnabled,
+        doubleClickSpeed: doubleClickSpeed
+    });
+    const reloadingOptions = browser.storage.local.get();
+    reloadingOptions.then(loadOptions);
+}
+
+function disableScroll() {
+    browser.runtime.sendMessage(kTST_ID, {
+        type: 'scroll-lock'
+    });
+}
+
+function enableScroll() {
+    browser.runtime.sendMessage(kTST_ID, {
+        type: 'scroll-unlock'
+    });
+}
+
+function reloadTab(tabId) {
+    browser.tabs.reload(tabId);
+}
+
+function findNonCollapsedTab(tabs, direction, currentIndex) {
+    let currentTab = tabs[currentIndex];
+    do {
+        currentIndex = direction + currentIndex;
+        if (currentIndex === -1) {
+            if (skipCycling) {
+                return tabs[0];
+            }
+            currentIndex = tabs.length - 1
+        }
+        else if (currentIndex === tabs.length) {
+            if (skipCycling) {
+                return tabs[tabs.length - 1]
+            }
+            currentIndex = 0;
+        }
+        currentTab = tabs[currentIndex]
+    } while (currentTab.states.includes('collapsed'));
+    return currentTab.id;
+}
+
+function handleScroll(aMessage) {
+    console.log("scrolled %s", aMessage.deltaY > 0 ? "down" : "up");
+    let activeTabIndex = aMessage.tabs.findIndex(tab => tab.active);
+    let direction = aMessage.deltaY > 0 ? 1 : -1;
+    let id;
+    if (skipCollapsed) {
+        id = findNonCollapsedTab(aMessage.tabs, direction, activeTabIndex);
+    } else {
+        id = aMessage.tabs[activeTabIndex + direction].id
+    }
+    browser.tabs.update(id, {active: true});
+    return Promise.resolve(true);
+}
+
+function handleTabClick(aMessage) {
+    if (!doubleClickEnabled) {
+        return Promise.resolve(false);
+    }
+
+    const now = Date.now();
+
+    if (previousTabId === aMessage.tab.id && now - previousClickTime < doubleClickSpeed) {
+        browser.tabs.reload(aMessage.tab.id);
+        return reloadTab(aMessage.tab.id);
+    }
+    previousClickTime = now;
+    previousTabId = aMessage.tab.id;
+    return Promise.resolve(false);
+}
+
