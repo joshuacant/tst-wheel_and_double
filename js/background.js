@@ -9,15 +9,15 @@ let doubleClickSpeed = '250';
 let previousClickTime = 0;
 let previousTabId = null;
 
+
 window.addEventListener('DOMContentLoaded', async () => {
 
     await registerToTST();
 
-    const initalizingOptions = browser.storage.local.get();
-
+    const initalizingOptions = await browser.storage.local.get();
     initalizingOptions.then(loadOptions);
-    browser.storage.onChanged.addListener(reloadOptions);
 
+    browser.storage.onChanged.addListener(reloadOptions);
     browser.runtime.onMessageExternal.addListener(onMessageExternal);
 });
 
@@ -108,8 +108,20 @@ function enableScroll() {
     });
 }
 
-function reloadTab(tabId) {
-    browser.tabs.reload(tabId);
+function handleScroll(aMessage) {
+    // console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
+    let activeTabIndex = aMessage.tabs.findIndex(tab => tab.active);
+    let direction = aMessage.deltaY > 0 ? 1 : -1;
+    direction = scrollingInverted ? -direction : direction;
+    let id;
+
+    if (skipCollapsed) {
+        id = findNonCollapsedTab(aMessage.tabs, direction, activeTabIndex);
+    } else {
+        id = findAnyNextTab(activeTabIndex, direction, aMessage.tabs);
+    }
+    browser.tabs.update(id, {active: true});
+    return Promise.resolve(true);
 }
 
 function findNonCollapsedTab(tabs, direction, currentIndex) {
@@ -118,13 +130,13 @@ function findNonCollapsedTab(tabs, direction, currentIndex) {
         currentIndex = direction + currentIndex;
         if (currentIndex === -1) {
             if (skipCycling) {
-                return tabs[0];
+                return tabs[0].id;
             }
             currentIndex = tabs.length - 1
         }
         else if (currentIndex === tabs.length) {
             if (skipCycling) {
-                return tabs[tabs.length - 1]
+                return tabs[tabs.length - 1].id
             }
             currentIndex = 0;
         }
@@ -133,18 +145,18 @@ function findNonCollapsedTab(tabs, direction, currentIndex) {
     return currentTab.id;
 }
 
-function handleScroll(aMessage) {
-    console.log("scrolled %s", aMessage.deltaY > 0 ? "down" : "up");
-    let activeTabIndex = aMessage.tabs.findIndex(tab => tab.active);
-    let direction = aMessage.deltaY > 0 ? 1 : -1;
+function findAnyNextTab(activeTabIndex, direction, tabs) {
     let id;
-    if (skipCollapsed) {
-        id = findNonCollapsedTab(aMessage.tabs, direction, activeTabIndex);
-    } else {
-        id = aMessage.tabs[activeTabIndex + direction].id
+    if (activeTabIndex + direction < 0) {
+        id = skipCycling ? tabs[0].id : tabs[tabs.length - 1].id
     }
-    browser.tabs.update(id, {active: true});
-    return Promise.resolve(true);
+    else if (activeTabIndex + direction === tabs.length) {
+        id = skipCycling ? tabs[tabs.length - 1].id : tabs[0].id;
+    }
+    else {
+        id = tabs[activeTabIndex + direction].id
+    }
+    return id;
 }
 
 function handleTabClick(aMessage) {
@@ -153,13 +165,11 @@ function handleTabClick(aMessage) {
     }
 
     const now = Date.now();
-
     if (previousTabId === aMessage.tab.id && now - previousClickTime < doubleClickSpeed) {
         browser.tabs.reload(aMessage.tab.id);
-        return reloadTab(aMessage.tab.id);
+        return Promise.resolve(true);
     }
     previousClickTime = now;
     previousTabId = aMessage.tab.id;
     return Promise.resolve(false);
 }
-
