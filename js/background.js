@@ -4,10 +4,17 @@ let disableScrolling = false;
 let scrollingInverted = false;
 let skipCollapsed = true;
 let skipCycling = false;
+
+let enableScrollWindow = false;
+let windowScrollSpeed = '25';
+
 let doubleClickEnabled = true;
 let doubleClickSpeed = '250';
+
 let previousClickTime = 0;
 let previousTabId = null;
+let previousScrollTime = 0;
+const scrollDelay = 100;
 
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -63,6 +70,10 @@ function loadOptions(options) {
         scrollingInverted = options.scrollingInverted;
         skipCollapsed = options.skipCollapsed;
         skipCycling = options.skipCycling;
+
+        enableScrollWindow = options.enableScrollWindow;
+        windowScrollSpeed = options.windowScrollSpeed;
+
         doubleClickEnabled = options.doubleClickEnabled;
         doubleClickSpeed = options.doubleClickSpeed;
     }
@@ -73,6 +84,10 @@ function reloadOptions(options) {
     scrollingInverted = options.scrollingInverted.newValue;
     skipCollapsed = options.skipCollapsed.newValue;
     skipCycling = options.skipCycling.newValue;
+
+    enableScrollWindow = options.enableScrollWindow.newValue;
+    windowScrollSpeed = options.windowScrollSpeed.newValue;
+
     doubleClickEnabled = options.doubleClickEnabled.newValue;
     doubleClickSpeed = options.doubleClickSpeed.newValue;
 
@@ -89,6 +104,10 @@ function createOptions() {
         scrollingInverted: scrollingInverted,
         skipCollapsed: skipCollapsed,
         skipCycling: skipCycling,
+
+        enableScrollWindow: enableScrollWindow,
+        windowScrollSpeed: windowScrollSpeed,
+
         doubleClickEnabled: doubleClickEnabled,
         doubleClickSpeed: doubleClickSpeed
     });
@@ -108,8 +127,33 @@ function enableScroll() {
     });
 }
 
+async function handleWindowScroll(aMessage) {
+    let now = Date.now();
+    // ensures scroll isn't snapping back and forth
+    if (now - previousScrollTime < scrollDelay) {
+        return Promise.resolve(true);
+    }
+    previousScrollTime = now;
+
+    let window = aMessage.window;
+    let delta = aMessage.deltaY;
+    let response = browser.runtime.sendMessage(kTST_ID, {
+        type: 'scroll',
+        window: window,
+        delta: delta * windowScrollSpeed
+    });
+    return Promise.resolve(true);
+}
+
+
 function handleScroll(aMessage) {
     // console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
+
+    if (enableScrollWindow && aMessage.shiftKey) {
+        return handleWindowScroll(aMessage)
+    }
+
+
     let activeTabIndex = aMessage.tabs.findIndex(tab => tab.active);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
     direction = scrollingInverted ? -direction : direction;
