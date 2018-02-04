@@ -20,9 +20,8 @@ const scrollDelay = 100;
 window.addEventListener('DOMContentLoaded', async () => {
 
     await registerToTST();
-
-    const initalizingOptions = browser.storage.local.get();
-    initalizingOptions.then(loadOptions);
+    const initalizingOptions = await browser.storage.local.get();
+    loadOptions(initalizingOptions);
 
     browser.storage.onChanged.addListener(reloadOptions);
     browser.runtime.onMessageExternal.addListener(onMessageExternal);
@@ -127,32 +126,12 @@ function enableScroll() {
     });
 }
 
-async function handleWindowScroll(aMessage) {
-    let now = Date.now();
-    // ensures scroll isn't snapping back and forth
-    if (now - previousScrollTime < scrollDelay) {
-        return Promise.resolve(true);
-    }
-    previousScrollTime = now;
-
-    let window = aMessage.window;
-    let delta = aMessage.deltaY;
-    let response = browser.runtime.sendMessage(kTST_ID, {
-        type: 'scroll',
-        window: window,
-        delta: delta * windowScrollSpeed
-    });
-    return Promise.resolve(true);
-}
-
-
 function handleScroll(aMessage) {
     // console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
 
     if (enableScrollWindow && aMessage.shiftKey) {
         return handleWindowScroll(aMessage)
     }
-
 
     let activeTabIndex = aMessage.tabs.findIndex(tab => tab.active);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
@@ -165,6 +144,25 @@ function handleScroll(aMessage) {
         id = findAnyNextTab(activeTabIndex, direction, aMessage.tabs);
     }
     browser.tabs.update(id, {active: true});
+    return Promise.resolve(true);
+}
+
+
+function handleWindowScroll(aMessage) {
+    let now = Date.now();
+    // ensures scroll isn't snapping back and forth
+    if (now - previousScrollTime < scrollDelay) {
+        return Promise.resolve(true);
+    }
+
+    previousScrollTime = now;
+    let window = aMessage.window;
+    let delta = aMessage.deltaY;
+    browser.runtime.sendMessage(kTST_ID, {
+        type: 'scroll',
+        window: window,
+        delta: delta * windowScrollSpeed
+    });
     return Promise.resolve(true);
 }
 
