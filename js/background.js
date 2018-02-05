@@ -4,25 +4,20 @@ let disableScrolling = false;
 let scrollingInverted = false;
 let skipCollapsed = true;
 let skipCycling = false;
-
 let enableScrollWindow = false;
 let windowScrollSpeed = '25';
-
 let doubleClickEnabled = true;
 let doubleClickSpeed = '250';
-
 let previousClickTime = 0;
 let previousTabId = null;
 let previousScrollTime = 0;
 const scrollDelay = 100;
 
-
 window.addEventListener('DOMContentLoaded', async () => {
-
+    console.log("registering");
     await registerToTST();
     const initalizingOptions = await browser.storage.local.get();
     loadOptions(initalizingOptions);
-
     browser.storage.onChanged.addListener(reloadOptions);
     browser.runtime.onMessageExternal.addListener(onMessageExternal);
 });
@@ -35,6 +30,7 @@ function onMessageExternal(aMessage, aSender) {
             case ('tab-clicked'):
                 return handleTabClick(aMessage);
             case ('ready'):
+                console.log("re-registering");
                 return registerToTST();
             default:
                 return Promise.resolve(false);
@@ -46,16 +42,18 @@ function onMessageExternal(aMessage, aSender) {
 async function registerToTST() {
     try {
         const self = await browser.management.getSelf();
-        const success = await browser.runtime.sendMessage(kTST_ID, {
+        let success = await browser.runtime.sendMessage(kTST_ID, {
             type: 'register-self',
             name: self.id,
         });
         if (success) {
+            console.log("registration successful");
             disableScroll();
         }
         return Promise.resolve(true);
     }
     catch (ex) {
+        console.log("registration failed");
         console.log(ex);
     }
 }
@@ -69,10 +67,8 @@ function loadOptions(options) {
         scrollingInverted = options.scrollingInverted;
         skipCollapsed = options.skipCollapsed;
         skipCycling = options.skipCycling;
-
         enableScrollWindow = options.enableScrollWindow;
         windowScrollSpeed = options.windowScrollSpeed;
-
         doubleClickEnabled = options.doubleClickEnabled;
         doubleClickSpeed = options.doubleClickSpeed;
     }
@@ -83,10 +79,8 @@ function reloadOptions(options) {
     scrollingInverted = options.scrollingInverted.newValue;
     skipCollapsed = options.skipCollapsed.newValue;
     skipCycling = options.skipCycling.newValue;
-
     enableScrollWindow = options.enableScrollWindow.newValue;
     windowScrollSpeed = options.windowScrollSpeed.newValue;
-
     doubleClickEnabled = options.doubleClickEnabled.newValue;
     doubleClickSpeed = options.doubleClickSpeed.newValue;
 
