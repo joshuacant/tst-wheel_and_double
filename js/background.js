@@ -97,10 +97,8 @@ function createOptions() {
         scrollingInverted: scrollingInverted,
         skipCollapsed: skipCollapsed,
         skipCycling: skipCycling,
-
         enableScrollWindow: enableScrollWindow,
         windowScrollSpeed: windowScrollSpeed,
-
         doubleClickEnabled: doubleClickEnabled,
         doubleClickSpeed: doubleClickSpeed
     });
