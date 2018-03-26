@@ -14,10 +14,10 @@ let previousScrollTime = 0;
 const scrollDelay = 100;
 
 window.addEventListener('DOMContentLoaded', async () => {
-    console.log("registering");
-    await registerToTST();
+    console.log("registering tst-wheel_and_double");
     const initalizingOptions = await browser.storage.local.get();
     loadOptions(initalizingOptions);
+    await registerToTST();
     browser.storage.onChanged.addListener(reloadOptions);
     browser.runtime.onMessageExternal.addListener(onMessageExternal);
 });
@@ -30,7 +30,7 @@ function onMessageExternal(aMessage, aSender) {
             case ('tab-clicked'):
                 return handleTabClick(aMessage);
             case ('ready'):
-                console.log("re-registering");
+                console.log("re-registering tst-wheel_and_double");
                 return registerToTST();
             default:
                 return Promise.resolve(false);
@@ -47,13 +47,15 @@ async function registerToTST() {
             name: self.id,
         });
         if (success) {
-            console.log("registration successful");
-            disableScroll();
+            console.log("tst-wheel_and_double registration successful");
+            if (disableScrolling == false) {
+              lockTSTScrolling();
+            }
         }
         return Promise.resolve(true);
     }
     catch (ex) {
-        console.log("registration failed");
+        console.log("tst-wheel_and_double registration failed");
         console.log(ex);
     }
 }
@@ -85,9 +87,9 @@ function reloadOptions(options) {
     doubleClickSpeed = options.doubleClickSpeed.newValue;
 
     if (disableScrolling) {
-        enableScroll();
+        unlockTSTScrolling();
     } else {
-        disableScroll();
+        lockTSTScrolling();
     }
 }
 
@@ -106,13 +108,13 @@ function createOptions() {
     reloadingOptions.then(loadOptions);
 }
 
-function disableScroll() {
+function lockTSTScrolling() {
     browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll-lock'
     });
 }
 
-function enableScroll() {
+function unlockTSTScrolling() {
     browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll-unlock'
     });
