@@ -49,7 +49,8 @@ async function registerToTST() {
         if (success) {
             console.log("tst-wheel_and_double registration successful");
             if (disableScrolling === false) {
-              lockTSTScrolling();
+              const result = await lockTSTScrolling();
+                console.log(result);
             }
         }
         return true;
@@ -93,8 +94,8 @@ function reloadOptions(options) {
     }
 }
 
-function createOptions() {
-    browser.storage.local.set({
+async function createOptions() {
+    await browser.storage.local.set({
         disableScrolling: disableScrolling,
         scrollingInverted: scrollingInverted,
         skipCollapsed: skipCollapsed,
@@ -104,23 +105,23 @@ function createOptions() {
         doubleClickEnabled: doubleClickEnabled,
         doubleClickSpeed: doubleClickSpeed
     });
-    const reloadingOptions = browser.storage.local.get();
-    reloadingOptions.then(loadOptions);
+    const reloadingOptions = await browser.storage.local.get();
+    loadOptions(reloadingOptions);
 }
 
-function lockTSTScrolling() {
+async function lockTSTScrolling() {
     browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll-lock'
     });
 }
 
-function unlockTSTScrolling() {
+async function unlockTSTScrolling() {
     browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll-unlock'
     });
 }
 
-function handleScroll(aMessage) {
+async function handleScroll(aMessage) {
     // console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
 
     if (enableScrollWindow && aMessage.shiftKey) {
@@ -137,12 +138,12 @@ function handleScroll(aMessage) {
     } else {
         id = findAnyNextTab(activeTabIndex, direction, aMessage.tabs);
     }
-    browser.tabs.update(id, {active: true});
+    await browser.tabs.update(id, {active: true});
     return true;
 }
 
 
-function handleWindowScroll(aMessage) {
+async function handleWindowScroll(aMessage) {
     let now = Date.now();
     // ensures scroll isn't snapping back and forth
     if (now - previousScrollTime < scrollDelay) {
@@ -152,7 +153,7 @@ function handleWindowScroll(aMessage) {
     previousScrollTime = now;
     let window = aMessage.window;
     let delta = aMessage.deltaY;
-    browser.runtime.sendMessage(kTST_ID, {
+    await browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll',
         window: window,
         delta: delta * windowScrollSpeed
@@ -195,14 +196,14 @@ function findAnyNextTab(activeTabIndex, direction, tabs) {
     return id;
 }
 
-function handleTabClick(aMessage) {
+async function handleTabClick(aMessage) {
     if (!doubleClickEnabled) {
         return false;
     }
 
     const now = Date.now();
     if (previousTabId === aMessage.tab.id && now - previousClickTime < doubleClickSpeed) {
-        browser.tabs.reload(aMessage.tab.id);
+        await browser.tabs.reload(aMessage.tab.id);
         return true;
     }
     previousClickTime = now;
