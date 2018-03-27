@@ -45,12 +45,12 @@ async function registerToTST() {
         let success = await browser.runtime.sendMessage(kTST_ID, {
             type: 'register-self',
             name: self.id,
+            listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
         });
         if (success) {
             console.log("tst-wheel_and_double registration successful");
             if (disableScrolling === false) {
-              const result = await lockTSTScrolling();
-                console.log(result);
+                lockTSTScrolling();
             }
         }
         return true;
