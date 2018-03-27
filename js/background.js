@@ -22,7 +22,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     browser.runtime.onMessageExternal.addListener(onMessageExternal);
 });
 
-function onMessageExternal(aMessage, aSender) {
+async function onMessageExternal(aMessage, aSender) {
     if (aSender.id === kTST_ID) {
         switch (aMessage.type) {
             case ('scrolled'):
@@ -33,10 +33,10 @@ function onMessageExternal(aMessage, aSender) {
                 console.log("re-registering tst-wheel_and_double");
                 return registerToTST();
             default:
-                return Promise.resolve(false);
+                return false;
         }
     }
-    return Promise.resolve(false);
+    return false;
 }
 
 async function registerToTST() {
@@ -45,14 +45,15 @@ async function registerToTST() {
         let success = await browser.runtime.sendMessage(kTST_ID, {
             type: 'register-self',
             name: self.id,
+            listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
         });
         if (success) {
             console.log("tst-wheel_and_double registration successful");
-            if (disableScrolling == false) {
-              lockTSTScrolling();
+            if (disableScrolling === false) {
+                lockTSTScrolling();
             }
         }
-        return Promise.resolve(true);
+        return true;
     }
     catch (ex) {
         console.log("tst-wheel_and_double registration failed");
@@ -93,8 +94,8 @@ function reloadOptions(options) {
     }
 }
 
-function createOptions() {
-    browser.storage.local.set({
+async function createOptions() {
+    await browser.storage.local.set({
         disableScrolling: disableScrolling,
         scrollingInverted: scrollingInverted,
         skipCollapsed: skipCollapsed,
@@ -104,23 +105,23 @@ function createOptions() {
         doubleClickEnabled: doubleClickEnabled,
         doubleClickSpeed: doubleClickSpeed
     });
-    const reloadingOptions = browser.storage.local.get();
-    reloadingOptions.then(loadOptions);
+    const reloadingOptions = await browser.storage.local.get();
+    loadOptions(reloadingOptions);
 }
 
-function lockTSTScrolling() {
+async function lockTSTScrolling() {
     browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll-lock'
     });
 }
 
-function unlockTSTScrolling() {
+async function unlockTSTScrolling() {
     browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll-unlock'
     });
 }
 
-function handleScroll(aMessage) {
+async function handleScroll(aMessage) {
     // console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
 
     if (enableScrollWindow && aMessage.shiftKey) {
@@ -137,27 +138,27 @@ function handleScroll(aMessage) {
     } else {
         id = findAnyNextTab(activeTabIndex, direction, aMessage.tabs);
     }
-    browser.tabs.update(id, {active: true});
-    return Promise.resolve(true);
+    await browser.tabs.update(id, {active: true});
+    return true;
 }
 
 
-function handleWindowScroll(aMessage) {
+async function handleWindowScroll(aMessage) {
     let now = Date.now();
     // ensures scroll isn't snapping back and forth
     if (now - previousScrollTime < scrollDelay) {
-        return Promise.resolve(true);
+        return true;
     }
 
     previousScrollTime = now;
     let window = aMessage.window;
     let delta = aMessage.deltaY;
-    browser.runtime.sendMessage(kTST_ID, {
+    await browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll',
         window: window,
         delta: delta * windowScrollSpeed
     });
-    return Promise.resolve(true);
+    return true;
 }
 
 function findNonCollapsedTab(tabs, direction, currentIndex) {
@@ -195,17 +196,17 @@ function findAnyNextTab(activeTabIndex, direction, tabs) {
     return id;
 }
 
-function handleTabClick(aMessage) {
+async function handleTabClick(aMessage) {
     if (!doubleClickEnabled) {
-        return Promise.resolve(false);
+        return false;
     }
 
     const now = Date.now();
     if (previousTabId === aMessage.tab.id && now - previousClickTime < doubleClickSpeed) {
-        browser.tabs.reload(aMessage.tab.id);
-        return Promise.resolve(true);
+        await browser.tabs.reload(aMessage.tab.id);
+        return true;
     }
     previousClickTime = now;
     previousTabId = aMessage.tab.id;
-    return Promise.resolve(false);
+    return false;
 }
