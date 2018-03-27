@@ -22,7 +22,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     browser.runtime.onMessageExternal.addListener(onMessageExternal);
 });
 
-function onMessageExternal(aMessage, aSender) {
+async function onMessageExternal(aMessage, aSender) {
     if (aSender.id === kTST_ID) {
         switch (aMessage.type) {
             case ('scrolled'):
@@ -33,10 +33,10 @@ function onMessageExternal(aMessage, aSender) {
                 console.log("re-registering tst-wheel_and_double");
                 return registerToTST();
             default:
-                return Promise.resolve(false);
+                return false;
         }
     }
-    return Promise.resolve(false);
+    return false;
 }
 
 async function registerToTST() {
@@ -48,11 +48,11 @@ async function registerToTST() {
         });
         if (success) {
             console.log("tst-wheel_and_double registration successful");
-            if (disableScrolling == false) {
+            if (disableScrolling === false) {
               lockTSTScrolling();
             }
         }
-        return Promise.resolve(true);
+        return true;
     }
     catch (ex) {
         console.log("tst-wheel_and_double registration failed");
@@ -138,7 +138,7 @@ function handleScroll(aMessage) {
         id = findAnyNextTab(activeTabIndex, direction, aMessage.tabs);
     }
     browser.tabs.update(id, {active: true});
-    return Promise.resolve(true);
+    return true;
 }
 
 
@@ -146,7 +146,7 @@ function handleWindowScroll(aMessage) {
     let now = Date.now();
     // ensures scroll isn't snapping back and forth
     if (now - previousScrollTime < scrollDelay) {
-        return Promise.resolve(true);
+        return true;
     }
 
     previousScrollTime = now;
@@ -157,7 +157,7 @@ function handleWindowScroll(aMessage) {
         window: window,
         delta: delta * windowScrollSpeed
     });
-    return Promise.resolve(true);
+    return true;
 }
 
 function findNonCollapsedTab(tabs, direction, currentIndex) {
@@ -197,15 +197,15 @@ function findAnyNextTab(activeTabIndex, direction, tabs) {
 
 function handleTabClick(aMessage) {
     if (!doubleClickEnabled) {
-        return Promise.resolve(false);
+        return false;
     }
 
     const now = Date.now();
     if (previousTabId === aMessage.tab.id && now - previousClickTime < doubleClickSpeed) {
         browser.tabs.reload(aMessage.tab.id);
-        return Promise.resolve(true);
+        return true;
     }
     previousClickTime = now;
     previousTabId = aMessage.tab.id;
-    return Promise.resolve(false);
+    return false;
 }
