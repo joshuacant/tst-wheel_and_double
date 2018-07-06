@@ -11,16 +11,26 @@ let doubleClickSpeed = '250';
 let previousClickTime = 0;
 let previousTabId = null;
 let previousScrollTime = 0;
+let registrationStatus = false;
 const scrollDelay = 100;
 
 window.addEventListener('DOMContentLoaded', async () => {
-    console.log("registering tst-wheel_and_double");
     const initalizingOptions = await browser.storage.local.get();
     loadOptions(initalizingOptions);
-    await registerToTST();
+    let registrationTimeout = 0;
+    while (registrationStatus === false && registrationTimeout < 10000) {
+        console.log("registering tst-wheel_and_double");
+        await timeout(registrationTimeout);
+        await registerToTST();
+        registrationTimeout = registrationTimeout + 1000;
+    }
     browser.storage.onChanged.addListener(reloadOptions);
     browser.runtime.onMessageExternal.addListener(onMessageExternal);
 });
+
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function onMessageExternal(aMessage, aSender) {
     if (aSender.id === kTST_ID) {
@@ -47,17 +57,16 @@ async function registerToTST() {
             name: self.id,
             listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
         });
-        if (success) {
-            console.log("tst-wheel_and_double registration successful");
-            if (disableScrolling === false) {
-                lockTSTScrolling();
-            }
+        if (disableScrolling === false) {
+            lockTSTScrolling();
         }
+        console.log("tst-wheel_and_double registration successful");
+        registrationStatus = true;
         return true;
     }
     catch (ex) {
-        console.log("tst-wheel_and_double registration failed");
-        console.log(ex);
+        console.log("tst-wheel_and_double registration failed with " + ex);
+        return false;
     }
 }
 
