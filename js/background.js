@@ -55,6 +55,7 @@ async function registerToTST() {
         let success = await browser.runtime.sendMessage(kTST_ID, {
             type: 'register-self',
             name: self.id,
+            //permissions: ['tabs','activeTab'],
             listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
         });
         if (disableScrolling === false) {
@@ -131,22 +132,23 @@ async function unlockTSTScrolling() {
 }
 
 async function handleScroll(aMessage) {
-    // console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
+    //console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
 
     if (enableScrollWindow && aMessage.shiftKey) {
         return handleWindowScroll(aMessage)
     }
-
-    let tabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
-    let activeTabIndex = tabs.findIndex(tab => tab.active);
+    
+    let tstTabs = aMessage.tabs;
+    let firefoxTabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
+    let activeTabIndex = firefoxTabs.findIndex(tab => tab.active);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
     direction = scrollingInverted ? -direction : direction;
-    let id;
+    let id = 0;
 
     if (skipCollapsed) {
-        id = findNonCollapsedTab(tabs, direction, activeTabIndex);
+        id = findNonCollapsedTab(firefoxTabs, tstTabs, direction, activeTabIndex);
     } else {
-        id = findAnyNextTab(activeTabIndex, direction, tabs);
+        id = findAnyNextTab(firefoxTabs, tstTabs, direction, activeTabIndex);
     }
     await browser.tabs.update(id, {active: true});
     return true;
@@ -171,37 +173,37 @@ async function handleWindowScroll(aMessage) {
     return true;
 }
 
-function findNonCollapsedTab(tabs, direction, currentIndex) {
-    let currentTab = tabs[currentIndex];
+function findNonCollapsedTab(firefoxTabs, tstTabs, direction, activeTabIndex) {
+    let currentTab = tstTabs[activeTabIndex];
     do {
-        currentIndex = direction + currentIndex;
-        if (currentIndex === -1) {
+        activeTabIndex = direction + activeTabIndex;
+        if (activeTabIndex === -1) {
             if (skipCycling) {
-                return tabs[0].id;
+                return tstTabs[0].id;
             }
-            currentIndex = tabs.length - 1
+            activeTabIndex = tstTabs.length - 1
         }
-        else if (currentIndex === tabs.length) {
+        else if (activeTabIndex === tstTabs.length) {
             if (skipCycling) {
-                return tabs[tabs.length - 1].id
+                return firefoxTabs[tstTabs.length - 1].id
             }
-            currentIndex = 0;
+            activeTabIndex = 0;
         }
-        currentTab = tabs[currentIndex]
+        currentTab = tstTabs[activeTabIndex]
     } while (currentTab.states.includes('collapsed'));
     return currentTab.id;
 }
 
-function findAnyNextTab(activeTabIndex, direction, tabs) {
-    let id;
+function findAnyNextTab(firefoxTabs, tstTabs, direction, activeTabIndex) {
+    let id = 0;
     if (activeTabIndex + direction < 0) {
-        id = skipCycling ? tabs[0].id : tabs[tabs.length - 1].id
+        id = skipCycling ? tstTabs[0].id : tstTabs[tstTabs.length - 1].id
     }
-    else if (activeTabIndex + direction === tabs.length) {
-        id = skipCycling ? tabs[tabs.length - 1].id : tabs[0].id;
+    else if (activeTabIndex + direction === tstTabs.length) {
+        id = skipCycling ? tstTabs[tstTabs.length - 1].id : tstTabs[0].id;
     }
     else {
-        id = tabs[activeTabIndex + direction].id
+        id = tstTabs[activeTabIndex + direction].id
     }
     return id;
 }
