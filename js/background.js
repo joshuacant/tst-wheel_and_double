@@ -137,15 +137,16 @@ async function handleScroll(aMessage) {
         return handleWindowScroll(aMessage)
     }
 
-    let activeTabIndex = aMessage.tabs.findIndex(tab => tab.active);
+    let tabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
+    let activeTabIndex = tabs.findIndex(tab => tab.active);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
     direction = scrollingInverted ? -direction : direction;
     let id;
 
     if (skipCollapsed) {
-        id = findNonCollapsedTab(aMessage.tabs, direction, activeTabIndex);
+        id = findNonCollapsedTab(tabs, direction, activeTabIndex);
     } else {
-        id = findAnyNextTab(activeTabIndex, direction, aMessage.tabs);
+        id = findAnyNextTab(activeTabIndex, direction, tabs);
     }
     await browser.tabs.update(id, {active: true});
     return true;
