@@ -137,7 +137,7 @@ async function handleScroll(aMessage) {
         return handleWindowScroll(aMessage)
     }
 
-    let tabs = await browser.tabs.query({ windowId: aMessage.windowId });
+    let tabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
     let activeTabIndex = tabs.findIndex(tab => tab.active);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
     direction = scrollingInverted ? -direction : direction;
