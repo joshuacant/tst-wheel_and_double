@@ -40,7 +40,10 @@ async function onMessageExternal(aMessage, aSender) {
             case ('tab-clicked'):
                 return handleTabClick(aMessage);
             case ('ready'):
-                console.log("re-registering tst-wheel_and_double");
+                console.log("re-registering tst-wheel_and_double due to ready message");
+                return registerToTST();
+            case ('permissions-changed'):
+                console.log("re-registering tst-wheel_and_double due to permissions-changed message");
                 return registerToTST();
             default:
                 return false;
@@ -139,8 +142,9 @@ async function handleScroll(aMessage) {
     }
     
     let tstTabs = aMessage.tabs;
-    let firefoxTabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
-    let activeTabIndex = firefoxTabs.findIndex(tab => tab.active);
+    let firefoxTabs = [];
+    //let firefoxTabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
+    let activeTabIndex = tstTabs.findIndex(tab => tab.active);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
     direction = scrollingInverted ? -direction : direction;
     let id = 0;
