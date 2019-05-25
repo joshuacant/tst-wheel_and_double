@@ -189,7 +189,7 @@ function findNonCollapsedTab(firefoxTabs, tstTabs, direction, activeTabIndex) {
         }
         else if (activeTabIndex === tstTabs.length) {
             if (skipCycling) {
-                return firefoxTabs[tstTabs.length - 1].id
+                return tstTabs[tstTabs.length - 1].id
             }
             activeTabIndex = 0;
         }
