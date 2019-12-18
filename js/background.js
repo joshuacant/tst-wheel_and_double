@@ -161,7 +161,7 @@ function findNextTab(tstTabs, direction, activeTabIndex) {
     let nextTabIndex = activeTabIndex;
     let cycleCount = 0;
     do {
-        nextTabIndex = nextTabIndex + direction;
+        nextTabIndex += direction;
         if (nextTabIndex < 0) {
             if (skipCycling) break;
             cycleCount++;
