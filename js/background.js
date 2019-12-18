@@ -166,7 +166,7 @@ function findNextTab(tstTabs, direction, activeTabIndex) {
             if (skipCycling) break;
             cycleCount++;
             nextTabIndex = tstTabs.length;
-        } else if (nextTabIndex === tstTabs.length) {
+        } else if (nextTabIndex >= tstTabs.length) {
             if (skipCycling) break;
             cycleCount++;
             nextTabIndex = -1;
