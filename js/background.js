@@ -158,6 +158,7 @@ async function handleScroll(aMessage) {
 }
 
 function findNextTab(tstTabs, direction, activeTabIndex) {
+    let lastTabIndex = tstTabs.length;
     let nextTabIndex = activeTabIndex;
     let cycleCount = 0;
     do {
@@ -165,20 +166,18 @@ function findNextTab(tstTabs, direction, activeTabIndex) {
         if (nextTabIndex < 0) {
             if (skipCycling) break;
             cycleCount++;
-            nextTabIndex = tstTabs.length;
-        } else if (nextTabIndex >= tstTabs.length) {
+            nextTabIndex = lastTabIndex;
+            continue;
+        }
+        if (nextTabIndex >= lastTabIndex) {
             if (skipCycling) break;
             cycleCount++;
             nextTabIndex = -1;
-        } else if (skipCollapsed) {
-            if (!tstTabs[nextTabIndex].states.includes('collapsed')) {
-                if (skipDiscarded) {
-                    if (!tstTabs[nextTabIndex].discarded) return tstTabs[nextTabIndex].id;
-                } else return tstTabs[nextTabIndex].id;
-            }
-        } else if (skipDiscarded) {
-            if (!tstTabs[nextTabIndex].discarded) return tstTabs[nextTabIndex].id;
-        } else return tstTabs[nextTabIndex].id;
+            continue;
+        }
+        if (skipCollapsed) if (tstTabs[nextTabIndex].states.includes('collapsed')) continue;
+        if (skipDiscarded) if (tstTabs[nextTabIndex].discarded) continue;
+        return tstTabs[nextTabIndex].id;
     } while (cycleCount < 2);
     return tstTabs[activeTabIndex].id;
 }
