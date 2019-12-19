@@ -177,6 +177,7 @@ function findNextTab(tstTabs, direction, activeTabIndex) {
         }
         if (skipCollapsed) if (tstTabs[nextTabIndex].states.includes('collapsed')) continue;
         if (skipDiscarded) if (tstTabs[nextTabIndex].discarded) continue;
+        if (tstTabs[nextTabIndex].states.includes('group-tab')) continue;
         return tstTabs[nextTabIndex].id;
     } while (cycleCount < 2);
     return tstTabs[activeTabIndex].id;
