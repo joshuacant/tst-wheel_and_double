@@ -4,6 +4,7 @@ function saveOptions(e) {
         disableScrolling: document.querySelector("#disableScrolling").checked,
         scrollingInverted: document.querySelector("#scrollingInverted").checked,
         skipCollapsed: document.querySelector("#skipCollapsed").checked,
+        skipDiscarded: document.querySelector("#skipDiscarded").checked,
         skipCycling: document.querySelector("#skipCycling").checked,
         enableScrollWindow: document.querySelector("#enableScrollWindow").checked,
         windowScrollSpeed: document.querySelector("#windowScrollSpeed").value,
@@ -17,6 +18,7 @@ function loadOptions() {
         document.querySelector("#disableScrolling").checked = options.disableScrolling;
         document.querySelector("#scrollingInverted").checked = options.scrollingInverted;
         document.querySelector("#skipCollapsed").checked = options.skipCollapsed;
+        document.querySelector("#skipDiscarded").checked = options.skipDiscarded;
         document.querySelector("#skipCycling").checked = options.skipCycling;
         document.querySelector("#enableScrollWindow").checked = options.enableScrollWindow || false;
         document.querySelector("#windowScrollSpeed").value = options.windowScrollSpeed || "25";
