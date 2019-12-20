@@ -146,7 +146,6 @@ async function handleScroll(aMessage) {
     }
     
     let tstTabs = aMessage.tabs;
-    //let firefoxTabs = [];
     //let firefoxTabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
     let activeTabIndex = tstTabs.findIndex(tab => tab.active);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
@@ -200,8 +199,6 @@ async function handleWindowScroll(aMessage) {
     });
     return true;
 }
-
-
 
 async function handleTabClick(aMessage) {
     if (!doubleClickEnabled) {
