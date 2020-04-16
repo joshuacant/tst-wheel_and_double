@@ -33,23 +33,48 @@ function timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+let taskTail = null;
+
+async function mutex(task) {
+    // append myself to queue tail
+    let prev = taskTail;
+    let done;
+    let cur = taskTail = new Promise((resolve) => done = resolve);
+    // wait for previous task
+    if (prev) {
+        await prev;
+    }
+    let result = await task();
+    if (Object.is(cur, taskTail)) {
+        // I am the last task, clear taskTail to avoid memory leak
+        taskTail = null;
+    } else {
+        // signal for next task
+        done();
+    }
+    return result;
+}
+
 async function onMessageExternal(aMessage, aSender) {
-    if (aSender.id === kTST_ID) {
+    if (aSender.id !== kTST_ID) {
+        return false;
+    }
+    await mutex(async () => {
         switch (aMessage.type) {
             case ('scrolled'):
-                return handleScroll(aMessage);
+                return await handleScroll(aMessage);
             case ('tab-clicked'):
-                return handleTabClick(aMessage);
+                return await handleTabClick(aMessage);
             case ('ready'):
                 console.log("re-registering tst-wheel_and_double due to ready message");
-                return registerToTST();
+                return await registerToTST();
             case ('permissions-changed'):
                 console.log("re-registering tst-wheel_and_double due to permissions-changed message");
-                return registerToTST();
+                return await registerToTST();
             default:
                 return false;
         }
-    }
+    });
     return false;
 }
 
@@ -142,17 +167,24 @@ async function handleScroll(aMessage) {
     //console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
 
     if (enableScrollWindow && aMessage.shiftKey) {
-        return handleWindowScroll(aMessage)
+        return await handleWindowScroll(aMessage)
     }
-    
+
     let tstTabs = aMessage.tabs;
-    //let firefoxTabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
-    let activeTabIndex = tstTabs.findIndex(tab => tab.active);
+    // let activeTabIndex = tstTabs.findIndex(tab => tab.active);
+    // NOTE: `tstTabs` could contain staled data since multiple wheel events can be emitted before `browser.tabs.update()`.
+    // NOTE: So we use `browser.tabs.query()` to find out the current active tab.
+    let activeTabs = await browser.tabs.query({
+        windowId: aMessage.windowId || aMessage.window,
+        active: true,
+    });
+    let activeTabIndex = tstTabs.findIndex(tab => tab.id == activeTabs[0].id);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
     direction = scrollingInverted ? -direction : direction;
     let id = findNextTab(tstTabs, direction, activeTabIndex);
 
     await browser.tabs.update(id, {active: true});
+    // console.log('Scrolled', activeTabs[0].id, '=>', id);
     return true;
 }
 
