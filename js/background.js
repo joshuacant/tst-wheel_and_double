@@ -44,7 +44,15 @@ async function mutex(task) {
     if (prev) {
         await prev;
     }
-    let result = await task();
+    // execute myself
+    let result;
+    let exception;
+    try {
+        result = await task();
+    } catch (exc) {
+        exception = exc;
+    }
+    // next task
     if (Object.is(cur, taskTail)) {
         // I am the last task, clear taskTail to avoid memory leak
         taskTail = null;
@@ -52,29 +60,40 @@ async function mutex(task) {
         // signal for next task
         done();
     }
-    return result;
+    // return
+    if (exception) {
+        throw exception;
+    } else {
+        return result;
+    }
 }
 
 async function onMessageExternal(aMessage, aSender) {
     if (aSender.id !== kTST_ID) {
         return false;
     }
-    await mutex(async () => {
-        switch (aMessage.type) {
-            case ('scrolled'):
-                return await handleScroll(aMessage);
-            case ('tab-clicked'):
-                return await handleTabClick(aMessage);
-            case ('ready'):
-                console.log("re-registering tst-wheel_and_double due to ready message");
-                return await registerToTST();
-            case ('permissions-changed'):
-                console.log("re-registering tst-wheel_and_double due to permissions-changed message");
-                return await registerToTST();
-            default:
-                return false;
-        }
-    });
+
+    try {
+        await mutex(async () => {
+            switch (aMessage.type) {
+                case ('scrolled'):
+                    return await handleScroll(aMessage);
+                case ('tab-clicked'):
+                    return await handleTabClick(aMessage);
+                case ('ready'):
+                    console.log("re-registering tst-wheel_and_double due to ready message");
+                    return await registerToTST();
+                case ('permissions-changed'):
+                    console.log("re-registering tst-wheel_and_double due to permissions-changed message");
+                    return await registerToTST();
+                default:
+                    return false;
+            }
+        });
+    } catch (exc) {
+        console.error('tst-wheel_and_double exception:', exc);
+    }
+
     return false;
 }
 
