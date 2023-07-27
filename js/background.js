@@ -33,23 +33,67 @@ function timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function onMessageExternal(aMessage, aSender) {
-    if (aSender.id === kTST_ID) {
-        switch (aMessage.type) {
-            case ('scrolled'):
-                return handleScroll(aMessage);
-            case ('tab-clicked'):
-                return handleTabClick(aMessage);
-            case ('ready'):
-                console.log("re-registering tst-wheel_and_double due to ready message");
-                return registerToTST();
-            case ('permissions-changed'):
-                console.log("re-registering tst-wheel_and_double due to permissions-changed message");
-                return registerToTST();
-            default:
-                return false;
-        }
+let taskTail = null;
+
+async function mutex(task) {
+    // append myself to queue tail
+    let prev = taskTail;
+    let done;
+    let cur = taskTail = new Promise((resolve) => done = resolve);
+    // wait for previous task
+    if (prev) {
+        await prev;
     }
+    // execute myself
+    let result;
+    let exception;
+    try {
+        result = await task();
+    } catch (exc) {
+        exception = exc;
+    }
+    // next task
+    if (Object.is(cur, taskTail)) {
+        // I am the last task, clear taskTail to avoid memory leak
+        taskTail = null;
+    } else {
+        // signal for next task
+        done();
+    }
+    // return
+    if (exception) {
+        throw exception;
+    } else {
+        return result;
+    }
+}
+
+async function onMessageExternal(aMessage, aSender) {
+    if (aSender.id !== kTST_ID) {
+        return false;
+    }
+
+    try {
+        await mutex(async () => {
+            switch (aMessage.type) {
+                case ('scrolled'):
+                    return await handleScroll(aMessage);
+                case ('tab-clicked'):
+                    return await handleTabClick(aMessage);
+                case ('ready'):
+                    console.log("re-registering tst-wheel_and_double due to ready message");
+                    return await registerToTST();
+                case ('permissions-changed'):
+                    console.log("re-registering tst-wheel_and_double due to permissions-changed message");
+                    return await registerToTST();
+                default:
+                    return false;
+            }
+        });
+    } catch (exc) {
+        console.error('tst-wheel_and_double exception:', exc);
+    }
+
     return false;
 }
 
@@ -142,17 +186,24 @@ async function handleScroll(aMessage) {
     //console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
 
     if (enableScrollWindow && aMessage.shiftKey) {
-        return handleWindowScroll(aMessage)
+        return await handleWindowScroll(aMessage)
     }
-    
+
     let tstTabs = aMessage.tabs;
-    //let firefoxTabs = await browser.tabs.query({ windowId: aMessage.windowId || aMessage.window });
-    let activeTabIndex = tstTabs.findIndex(tab => tab.active);
+    // let activeTabIndex = tstTabs.findIndex(tab => tab.active);
+    // NOTE: `tstTabs` could contain staled data since multiple wheel events can be emitted before `browser.tabs.update()`.
+    // NOTE: So we use `browser.tabs.query()` to find out the current active tab.
+    let activeTabs = await browser.tabs.query({
+        windowId: aMessage.windowId || aMessage.window,
+        active: true,
+    });
+    let activeTabIndex = tstTabs.findIndex(tab => tab.id == activeTabs[0].id);
     let direction = aMessage.deltaY > 0 ? 1 : -1;
     direction = scrollingInverted ? -direction : direction;
     let id = findNextTab(tstTabs, direction, activeTabIndex);
 
-    await browser.tabs.update(id, {active: true});
+    await browser.tabs.update(id, { active: true });
+    // console.log('Scrolled', activeTabs[0].id, '=>', id);
     return true;
 }
 
@@ -192,10 +243,11 @@ async function handleWindowScroll(aMessage) {
     previousScrollTime = now;
     let window = aMessage.window;
     let delta = aMessage.deltaY;
+    delta = scrollingInverted ? -delta : delta;
     await browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll',
         window: window,
-        delta: delta * windowScrollSpeed
+        delta: delta
     });
     return true;
 }

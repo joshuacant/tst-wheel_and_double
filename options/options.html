@@ -1,13 +1,34 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: rgb(40, 40, 40);
+        color: rgb(215, 215, 215);
+        padding: 0em 2em 2em 2em;
+      }
+    }
+  </style>
+</head>
+
+<body>
   <form>
     <h1>Scrolling Options</h1>
     <hr>
-    <label>Disable scrolling to change tabs <input type="checkbox" id="disableScrolling"> (Default off)</label> <br>
-    <label>Invert scrolling direction <input type="checkbox" id="scrollingInverted"> (Default off)</label> <br>
+    <label class="has-checkbox">Disable scrolling to change tabs <input type="checkbox" id="disableScrolling"> (Default
+      off)</label> <br>
+    <label class="has-checkbox">Invert scrolling direction <input type="checkbox" id="scrollingInverted"> (Default
+      off)</label> <br>
     <label>Skip collapsed tabs <input type="checkbox" id="skipCollapsed"> (Default on)</label> <br>
     <label>Skip discarded tabs <input type="checkbox" id="skipDiscarded"> (Default on)</label> <br>
-    <label>Skip cycling from end to start/start to end <input type="checkbox" id="skipCycling"> (Default off)</label> <br>
-    <label>Enable shift-scroll to scroll tab window<input type="checkbox" id="enableScrollWindow"> (Default off)</label> <br>
+    <label>Skip cycling from end to start/start to end <input type="checkbox" id="skipCycling"> (Default off)</label>
+    <br>
+    <label>Enable shift-scroll to scroll tab window<input type="checkbox" id="enableScrollWindow"> (Default off)</label>
+    <br>
     <label>Tab window scroll speed <input type="text" id="windowScrollSpeed" size="5">ms (Default 25ms)</label> <br>
     <h1>Double Click Options</h1>
     <hr>
@@ -21,4 +42,7 @@
     <br><br>
     <button type="submit">Save Options</button>
   </form>
-<script src="options.js"></script></body></html>
+  <script src="options.js"></script>
+</body>
+
+</html>
