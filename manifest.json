@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "TST Mouse Wheel and Double Click",
-  "version": "1.5",
+  "version": "1.5.4",
   "description": "Allows tab changing by mousewheel and reload on double click.",
   "homepage_url": "https://github.com/joshuacant/",
   "icons": {
@@ -24,10 +24,10 @@
     ]
   },
   
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "tst-wheel_and_double@dontpokebadgers.com",
-      "strict_min_version": "57.0a1"
+      "strict_min_version": "102.0"
     }
   }
 }

@@ -6,18 +6,22 @@ let skipCollapsed = true;
 let skipDiscarded = true;
 let skipCycling = false;
 let enableScrollWindow = false;
-let windowScrollSpeed = '25';
+let windowScrollMult = '1';
 let doubleClickEnabled = true;
 let doubleClickSpeed = '250';
 let previousClickTime = 0;
 let previousTabId = null;
 let previousScrollTime = 0;
 let registrationStatus = false;
-const scrollDelay = 100;
+let scrollDelay = 100;
 
 window.addEventListener('DOMContentLoaded', async () => {
-    const initalizingOptions = await browser.storage.local.get();
-    loadOptions(initalizingOptions);
+    let initalizingOptions = await browser.storage.local.get();
+    if (Object.keys(initalizingOptions).length === 0) {
+        await createOptions();
+        initalizingOptions = await browser.storage.local.get();
+    }
+    await loadOptions(initalizingOptions);
     let registrationTimeout = 0;
     while (registrationStatus === false && registrationTimeout < 10000) {
         console.log("registering tst-wheel_and_double");
@@ -31,6 +35,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 function timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isNumeric(str) {
+    if (typeof str != "string") return false
+    return !isNaN(str) && !isNaN(parseFloat(str))
 }
 
 let taskTail = null;
@@ -119,31 +128,26 @@ async function registerToTST() {
     }
 }
 
-function loadOptions(options) {
-    if (Object.keys(options).length === 0) {
-        createOptions();
-    }
-    else {
-        disableScrolling = options.disableScrolling;
-        scrollingInverted = options.scrollingInverted;
-        skipCollapsed = options.skipCollapsed;
-        skipDiscarded = options.skipDiscarded;
-        skipCycling = options.skipCycling;
-        enableScrollWindow = options.enableScrollWindow;
-        windowScrollSpeed = options.windowScrollSpeed;
-        doubleClickEnabled = options.doubleClickEnabled;
-        doubleClickSpeed = options.doubleClickSpeed;
-    }
+async function loadOptions(options) {
+    disableScrolling = options.disableScrolling;
+    scrollingInverted = options.scrollingInverted;
+    skipCollapsed = options.skipCollapsed;
+    skipDiscarded = options.skipDiscarded;
+    skipCycling = options.skipCycling;
+    enableScrollWindow = options.enableScrollWindow;
+    windowScrollMult = options.windowScrollMult;
+    doubleClickEnabled = options.doubleClickEnabled;
+    doubleClickSpeed = options.doubleClickSpeed;
 }
 
-function reloadOptions(options) {
+async function reloadOptions(options) {
     disableScrolling = options.disableScrolling.newValue;
     scrollingInverted = options.scrollingInverted.newValue;
     skipCollapsed = options.skipCollapsed.newValue;
     skipDiscarded = options.skipDiscarded.newValue;
     skipCycling = options.skipCycling.newValue;
     enableScrollWindow = options.enableScrollWindow.newValue;
-    windowScrollSpeed = options.windowScrollSpeed.newValue;
+    windowScrollMult = options.windowScrollMult.newValue;
     doubleClickEnabled = options.doubleClickEnabled.newValue;
     doubleClickSpeed = options.doubleClickSpeed.newValue;
 
@@ -155,19 +159,17 @@ function reloadOptions(options) {
 }
 
 async function createOptions() {
-    await browser.storage.local.set({
+    browser.storage.local.set({
         disableScrolling: disableScrolling,
         scrollingInverted: scrollingInverted,
         skipCollapsed: skipCollapsed,
         skipDiscarded: skipDiscarded,
         skipCycling: skipCycling,
         enableScrollWindow: enableScrollWindow,
-        windowScrollSpeed: windowScrollSpeed,
+        windowScrollMult: windowScrollMult,
         doubleClickEnabled: doubleClickEnabled,
         doubleClickSpeed: doubleClickSpeed
     });
-    const reloadingOptions = await browser.storage.local.get();
-    loadOptions(reloadingOptions);
 }
 
 async function lockTSTScrolling() {
@@ -183,8 +185,6 @@ async function unlockTSTScrolling() {
 }
 
 async function handleScroll(aMessage) {
-    //console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`);
-
     if (enableScrollWindow && aMessage.shiftKey) {
         return await handleWindowScroll(aMessage)
     }
@@ -203,7 +203,7 @@ async function handleScroll(aMessage) {
     let id = findNextTab(tstTabs, direction, activeTabIndex);
 
     await browser.tabs.update(id, { active: true });
-    // console.log('Scrolled', activeTabs[0].id, '=>', id);
+    //console.log(`scrolled ${aMessage.deltaY > 0 ? "down" : "up"}`, activeTabs[0].id, ' => ', id);
     return true;
 }
 
@@ -239,11 +239,15 @@ async function handleWindowScroll(aMessage) {
     if (now - previousScrollTime < scrollDelay) {
         return true;
     }
-
     previousScrollTime = now;
+
     let window = aMessage.window;
     let delta = aMessage.deltaY;
     delta = scrollingInverted ? -delta : delta;
+    if (isNumeric(windowScrollMult) && windowScrollMult > 0.01) {
+        delta = delta * windowScrollMult;
+    }
+
     await browser.runtime.sendMessage(kTST_ID, {
         type: 'scroll',
         window: window,

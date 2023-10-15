@@ -27,9 +27,15 @@
     <label>Skip discarded tabs <input type="checkbox" id="skipDiscarded"> (Default on)</label> <br>
     <label>Skip cycling from end to start/start to end <input type="checkbox" id="skipCycling"> (Default off)</label>
     <br>
-    <label>Enable shift-scroll to scroll tab window<input type="checkbox" id="enableScrollWindow"> (Default off)</label>
+    <label>Enable shift-scroll to scroll tab window <input type="checkbox" id="enableScrollWindow"> (Default off)</label>
     <br>
-    <label>Tab window scroll speed <input type="text" id="windowScrollSpeed" size="5">ms (Default 25ms)</label> <br>
+    <label>Tab window scroll multiplier
+      <select id="windowScrollMult">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+    </select></label><br>
     <h1>Double Click Options</h1>
     <hr>
     <label>Enable Double Click to Reload<input type="checkbox" id="doubleClickEnabled"> (Default on)</label> <br>
