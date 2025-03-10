@@ -5,6 +5,7 @@ let scrollingInverted = false;
 let skipCollapsed = true;
 let skipDiscarded = true;
 let skipCycling = false;
+let skipGroups = true;
 let enableScrollWindow = false;
 let windowScrollMult = '1';
 let doubleClickEnabled = true;
@@ -134,6 +135,7 @@ async function loadOptions(options) {
     skipCollapsed = options.skipCollapsed;
     skipDiscarded = options.skipDiscarded;
     skipCycling = options.skipCycling;
+    skipGroups = options.skipGroups;
     enableScrollWindow = options.enableScrollWindow;
     windowScrollMult = options.windowScrollMult;
     doubleClickEnabled = options.doubleClickEnabled;
@@ -146,6 +148,7 @@ async function reloadOptions(options) {
     skipCollapsed = options.skipCollapsed.newValue;
     skipDiscarded = options.skipDiscarded.newValue;
     skipCycling = options.skipCycling.newValue;
+    skipGroups = options.skipGroups.newValue;
     enableScrollWindow = options.enableScrollWindow.newValue;
     windowScrollMult = options.windowScrollMult.newValue;
     doubleClickEnabled = options.doubleClickEnabled.newValue;
@@ -165,6 +168,7 @@ async function createOptions() {
         skipCollapsed: skipCollapsed,
         skipDiscarded: skipDiscarded,
         skipCycling: skipCycling,
+        skipGroups: skipGroups,
         enableScrollWindow: enableScrollWindow,
         windowScrollMult: windowScrollMult,
         doubleClickEnabled: doubleClickEnabled,
@@ -227,7 +231,7 @@ function findNextTab(tstTabs, direction, activeTabIndex) {
         }
         if (skipCollapsed) if (tstTabs[nextTabIndex].states.includes('collapsed')) continue;
         if (skipDiscarded) if (tstTabs[nextTabIndex].discarded) continue;
-        if (tstTabs[nextTabIndex].states.includes('group-tab')) continue;
+        if (skipGroups) if (tstTabs[nextTabIndex].states.includes('group-tab')) continue;
         return tstTabs[nextTabIndex].id;
     } while (cycleCount < 2);
     return tstTabs[activeTabIndex].id;

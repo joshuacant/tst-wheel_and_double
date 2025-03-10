@@ -6,6 +6,7 @@ function saveOptions(e) {
         skipCollapsed: document.querySelector("#skipCollapsed").checked,
         skipDiscarded: document.querySelector("#skipDiscarded").checked,
         skipCycling: document.querySelector("#skipCycling").checked,
+        skipGroups: document.querySelector("#skipGroups").checked,
         enableScrollWindow: document.querySelector("#enableScrollWindow").checked,
         windowScrollMult: document.querySelector("#windowScrollMult").value,
         doubleClickEnabled: document.querySelector("#doubleClickEnabled").checked,
@@ -20,6 +21,7 @@ function loadOptions() {
         document.querySelector("#skipCollapsed").checked = options.skipCollapsed;
         document.querySelector("#skipDiscarded").checked = options.skipDiscarded;
         document.querySelector("#skipCycling").checked = options.skipCycling;
+        document.querySelector("#skipGroups").checked = options.skipGroups;
         document.querySelector("#enableScrollWindow").checked = options.enableScrollWindow;
         document.querySelector("#windowScrollMult").value = options.windowScrollMult;
         document.querySelector("#doubleClickEnabled").checked = options.doubleClickEnabled;
