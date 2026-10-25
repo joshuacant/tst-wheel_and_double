@@ -162,7 +162,7 @@ async function reloadOptions(options) {
 }
 
 async function createOptions() {
-    browser.storage.local.set({
+    await browser.storage.local.set({
         disableScrolling: disableScrolling,
         scrollingInverted: scrollingInverted,
         skipCollapsed: skipCollapsed,
