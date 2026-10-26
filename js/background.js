@@ -1,5 +1,31 @@
 "use strict";
+
+let registrationStatus = false;
 const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
+async function _init() {
+    const self = await browser.management.getSelf();
+    console.log(self.id + " loading");
+
+    await loadOptions(self);
+
+    function timeout(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    let registrationTimeout = 0;
+    while (registrationStatus === false) {
+        await timeout(registrationTimeout);
+        console.log(self.id + " registering to " + kTST_ID);
+        try {
+            if (await browser.runtime.sendMessage(kTST_ID, { type: 'ping' })) {
+                await registerToTST();
+            }
+        }
+        catch (exc) { console.log(self.id + " registering to " + kTST_ID + " failed " + exc); }
+        registrationTimeout = Math.min((registrationTimeout + 1000), 5000);
+    }
+}
+
 let disableScrolling = false;
 let scrollingInverted = false;
 let skipCollapsed = true;
@@ -10,41 +36,85 @@ let enableScrollWindow = false;
 let windowScrollMult = '1';
 let doubleClickEnabled = true;
 let doubleClickSpeed = '250';
-let previousClickTime = 0;
-let previousTabId = null;
-let previousScrollTime = 0;
-let registrationStatus = false;
-let scrollDelay = 100;
-
-window.addEventListener('DOMContentLoaded', async () => {
-    let initalizingOptions = await browser.storage.local.get();
-    if (Object.keys(initalizingOptions).length === 0) {
-        await createOptions();
-        initalizingOptions = await browser.storage.local.get();
+async function loadOptions(self) {
+    let options = await browser.storage.local.get();
+    if (Object.keys(options).length == 0) {
+        createOptions(self);
     }
-    await loadOptions(initalizingOptions);
-    let registrationTimeout = 0;
-    while (registrationStatus === false && registrationTimeout < 10000) {
-        console.log("registering tst-wheel_and_double");
-        await timeout(registrationTimeout);
-        await registerToTST();
-        registrationTimeout = registrationTimeout + 1000;
+    else {
+        disableScrolling = options.disableScrolling;
+        scrollingInverted = options.scrollingInverted;
+        skipCollapsed = options.skipCollapsed;
+        skipDiscarded = options.skipDiscarded;
+        skipCycling = options.skipCycling;
+        skipGroups = options.skipGroups;
+        enableScrollWindow = options.enableScrollWindow;
+        windowScrollMult = options.windowScrollMult;
+        doubleClickEnabled = options.doubleClickEnabled;
+        doubleClickSpeed = options.doubleClickSpeed;
     }
-    browser.storage.onChanged.addListener(reloadOptions);
-    browser.runtime.onMessageExternal.addListener(onMessageExternal);
-});
-
-function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function isNumeric(str) {
-    if (typeof str != "string") return false
-    return !isNaN(str) && !isNaN(parseFloat(str))
+async function reloadOptions(options) {
+    disableScrolling = options.disableScrolling.newValue;
+    scrollingInverted = options.scrollingInverted.newValue;
+    skipCollapsed = options.skipCollapsed.newValue;
+    skipDiscarded = options.skipDiscarded.newValue;
+    skipCycling = options.skipCycling.newValue;
+    skipGroups = options.skipGroups.newValue;
+    enableScrollWindow = options.enableScrollWindow.newValue;
+    windowScrollMult = options.windowScrollMult.newValue;
+    doubleClickEnabled = options.doubleClickEnabled.newValue;
+    doubleClickSpeed = options.doubleClickSpeed.newValue;
+
+    if (disableScrolling) {
+        unlockTSTScrolling();
+    } else {
+        lockTSTScrolling();
+    }
+}
+
+async function createOptions(self) {
+    console.log(self.id + " creating options");
+    await browser.storage.local.set({
+        disableScrolling: disableScrolling,
+        scrollingInverted: scrollingInverted,
+        skipCollapsed: skipCollapsed,
+        skipDiscarded: skipDiscarded,
+        skipCycling: skipCycling,
+        skipGroups: skipGroups,
+        enableScrollWindow: enableScrollWindow,
+        windowScrollMult: windowScrollMult,
+        doubleClickEnabled: doubleClickEnabled,
+        doubleClickSpeed: doubleClickSpeed
+    });
+    let reloadingOptions = browser.storage.local.get();
+    reloadingOptions.then(loadOptions);
+}
+
+async function registerToTST() {
+    try {
+        const self = await browser.management.getSelf();
+        let result = await browser.runtime.sendMessage(kTST_ID, {
+            type: 'register-self',
+            name: self.id,
+            //permissions: ['tabs','activeTab'],
+            listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
+        });
+        if (disableScrolling === false) {
+            lockTSTScrolling();
+        }
+        console.log("tst-wheel_and_double registration successful");
+        registrationStatus = true;
+        return true;
+    }
+    catch (ex) {
+        console.log("tst-wheel_and_double registration failed with " + ex);
+        return false;
+    }
 }
 
 let taskTail = null;
-
 async function mutex(task) {
     // append myself to queue tail
     let prev = taskTail;
@@ -79,6 +149,8 @@ async function mutex(task) {
 }
 
 async function onMessageExternal(aMessage, aSender) {
+    const self = await browser.management.getSelf();
+
     if (aSender.id !== kTST_ID) {
         return false;
     }
@@ -91,89 +163,20 @@ async function onMessageExternal(aMessage, aSender) {
                 case ('tab-clicked'):
                     return await handleTabClick(aMessage);
                 case ('ready'):
-                    console.log("re-registering tst-wheel_and_double due to ready message");
+                    console.log(self.id + " re-registering due to ready message");
                     return await registerToTST();
                 case ('permissions-changed'):
-                    console.log("re-registering tst-wheel_and_double due to permissions-changed message");
+                    console.log(self.id + " re-registering due to permissions-changed message");
                     return await registerToTST();
                 default:
                     return false;
             }
         });
     } catch (exc) {
-        console.error('tst-wheel_and_double exception:', exc);
+        console.error(self.id + " exception: " + exc);
     }
 
     return false;
-}
-
-async function registerToTST() {
-    try {
-        const self = await browser.management.getSelf();
-        let success = await browser.runtime.sendMessage(kTST_ID, {
-            type: 'register-self',
-            name: self.id,
-            //permissions: ['tabs','activeTab'],
-            listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
-        });
-        if (disableScrolling === false) {
-            lockTSTScrolling();
-        }
-        console.log("tst-wheel_and_double registration successful");
-        registrationStatus = true;
-        return true;
-    }
-    catch (ex) {
-        console.log("tst-wheel_and_double registration failed with " + ex);
-        return false;
-    }
-}
-
-async function loadOptions(options) {
-    disableScrolling = options.disableScrolling;
-    scrollingInverted = options.scrollingInverted;
-    skipCollapsed = options.skipCollapsed;
-    skipDiscarded = options.skipDiscarded;
-    skipCycling = options.skipCycling;
-    skipGroups = options.skipGroups;
-    enableScrollWindow = options.enableScrollWindow;
-    windowScrollMult = options.windowScrollMult;
-    doubleClickEnabled = options.doubleClickEnabled;
-    doubleClickSpeed = options.doubleClickSpeed;
-}
-
-async function reloadOptions(options) {
-    disableScrolling = options.disableScrolling.newValue;
-    scrollingInverted = options.scrollingInverted.newValue;
-    skipCollapsed = options.skipCollapsed.newValue;
-    skipDiscarded = options.skipDiscarded.newValue;
-    skipCycling = options.skipCycling.newValue;
-    skipGroups = options.skipGroups.newValue;
-    enableScrollWindow = options.enableScrollWindow.newValue;
-    windowScrollMult = options.windowScrollMult.newValue;
-    doubleClickEnabled = options.doubleClickEnabled.newValue;
-    doubleClickSpeed = options.doubleClickSpeed.newValue;
-
-    if (disableScrolling) {
-        unlockTSTScrolling();
-    } else {
-        lockTSTScrolling();
-    }
-}
-
-async function createOptions() {
-    browser.storage.local.set({
-        disableScrolling: disableScrolling,
-        scrollingInverted: scrollingInverted,
-        skipCollapsed: skipCollapsed,
-        skipDiscarded: skipDiscarded,
-        skipCycling: skipCycling,
-        skipGroups: skipGroups,
-        enableScrollWindow: enableScrollWindow,
-        windowScrollMult: windowScrollMult,
-        doubleClickEnabled: doubleClickEnabled,
-        doubleClickSpeed: doubleClickSpeed
-    });
 }
 
 async function lockTSTScrolling() {
@@ -237,6 +240,8 @@ function findNextTab(tstTabs, direction, activeTabIndex) {
     return tstTabs[activeTabIndex].id;
 }
 
+let previousScrollTime = 0;
+let scrollDelay = 100;
 async function handleWindowScroll(aMessage) {
     let now = Date.now();
     // ensures scroll isn't snapping back and forth
@@ -244,6 +249,11 @@ async function handleWindowScroll(aMessage) {
         return true;
     }
     previousScrollTime = now;
+
+    function isNumeric(str) {
+        if (typeof str != "string") return false
+        return !isNaN(str) && !isNaN(parseFloat(str))
+    }
 
     let window = aMessage.window;
     let delta = aMessage.deltaY;
@@ -260,6 +270,8 @@ async function handleWindowScroll(aMessage) {
     return true;
 }
 
+let previousClickTime = 0;
+let previousTabId = null;
 async function handleTabClick(aMessage) {
     if (!doubleClickEnabled) {
         return false;
@@ -274,3 +286,7 @@ async function handleTabClick(aMessage) {
     previousTabId = aMessage.tab.id;
     return false;
 }
+
+_init();
+browser.storage.onChanged.addListener(reloadOptions);
+browser.runtime.onMessageExternal.addListener(onMessageExternal);
