@@ -24,6 +24,9 @@ async function _init() {
         catch (exc) { console.log(self.id + " registering to " + kTST_ID + " failed " + exc); }
         registrationTimeout = Math.min((registrationTimeout + 1000), 5000);
     }
+
+    browser.storage.onChanged.addListener(reloadOptions);
+    browser.runtime.onMessageExternal.addListener(onMessageExternal);
 }
 
 let disableScrolling = false;
@@ -288,5 +291,3 @@ async function handleTabClick(aMessage) {
 }
 
 _init();
-browser.storage.onChanged.addListener(reloadOptions);
-browser.runtime.onMessageExternal.addListener(onMessageExternal);
