@@ -1,5 +1,5 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "TST Mouse Wheel and Double Click",
   "version": "1.5.12",
   "description": "Allows tab changing by mousewheel and reload on double click.",
@@ -14,8 +14,7 @@
   ],
 
   "options_ui": {
-    "page": "options/options.html",
-    "browser_style": true
+    "page": "options/options.html"
   },
 
   "background": {
