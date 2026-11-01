@@ -14,6 +14,7 @@ async function _init() {
 
     let registrationTimeout = 0;
     while (registrationStatus === false) {
+        // try multiple times to register, slowly backing off to once every 5 seconds
         await timeout(registrationTimeout);
         console.log(self.id + " registering to " + kTST_ID);
         try {
@@ -108,7 +109,6 @@ async function registerToTST() {
         let result = await browser.runtime.sendMessage(kTST_ID, {
             type: 'register-self',
             name: self.id,
-            //permissions: ['tabs','activeTab'],
             listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
         });
         if (disableScrolling === false) {
@@ -126,15 +126,12 @@ async function registerToTST() {
 
 let taskTail = null;
 async function mutex(task) {
-    // append myself to queue tail
     let prev = taskTail;
     let done;
     let cur = taskTail = new Promise((resolve) => done = resolve);
-    // wait for previous task
     if (prev) {
         await prev;
     }
-    // execute myself
     let result;
     let exception;
     try {
@@ -142,15 +139,11 @@ async function mutex(task) {
     } catch (exc) {
         exception = exc;
     }
-    // next task
     if (Object.is(cur, taskTail)) {
-        // I am the last task, clear taskTail to avoid memory leak
         taskTail = null;
     } else {
-        // signal for next task
         done();
     }
-    // return
     if (exception) {
         throw exception;
     } else {
@@ -219,7 +212,6 @@ async function handleScroll(aMessage) {
     }
 
     let tstTabs = aMessage.tabs;
-    // let activeTabIndex = tstTabs.findIndex(tab => tab.active);
     // NOTE: `tstTabs` could contain stale data since multiple wheel events can be emitted before `browser.tabs.update()`.
     // NOTE: So we use `browser.tabs.query()` to find out the current active tab.
     let activeTabs = await browser.tabs.query({
