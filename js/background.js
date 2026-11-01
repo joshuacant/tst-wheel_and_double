@@ -80,7 +80,7 @@ async function createOptions(self) {
         doubleClickSpeed: doubleClickSpeed
     });
     let reloadingOptions = browser.storage.local.get();
-    reloadingOptions.then(loadOptions);
+    await reloadingOptions.then(loadOptions);
 }
 
 async function reloadOptions(options) {
@@ -111,9 +111,6 @@ async function registerToTST() {
             name: self.id,
             listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
         });
-        if (disableScrolling === false) {
-            lockTSTScrolling();
-        }
         console.log(self.id +  " registration successful");
         registrationStatus = true;
         return true;
