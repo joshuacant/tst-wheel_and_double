@@ -42,7 +42,7 @@ let doubleClickSpeed = '250';
 async function loadOptions(self) {
     let options = await browser.storage.local.get();
     if (Object.keys(options).length == 0) {
-        createOptions(self);
+        await createOptions(self);
     }
     else {
         disableScrolling = options.disableScrolling;
@@ -56,24 +56,11 @@ async function loadOptions(self) {
         doubleClickEnabled = options.doubleClickEnabled;
         doubleClickSpeed = options.doubleClickSpeed;
     }
-}
-
-async function reloadOptions(options) {
-    disableScrolling = options.disableScrolling.newValue;
-    scrollingInverted = options.scrollingInverted.newValue;
-    skipCollapsed = options.skipCollapsed.newValue;
-    skipDiscarded = options.skipDiscarded.newValue;
-    skipCycling = options.skipCycling.newValue;
-    skipGroups = options.skipGroups.newValue;
-    enableScrollWindow = options.enableScrollWindow.newValue;
-    windowScrollMult = options.windowScrollMult.newValue;
-    doubleClickEnabled = options.doubleClickEnabled.newValue;
-    doubleClickSpeed = options.doubleClickSpeed.newValue;
 
     if (disableScrolling) {
-        unlockTSTScrolling();
+        unlockTSTScrolling(self);
     } else {
-        lockTSTScrolling();
+        lockTSTScrolling(self);
     }
 }
 
@@ -95,9 +82,29 @@ async function createOptions(self) {
     reloadingOptions.then(loadOptions);
 }
 
+async function reloadOptions(options) {
+    disableScrolling = options.disableScrolling.newValue;
+    scrollingInverted = options.scrollingInverted.newValue;
+    skipCollapsed = options.skipCollapsed.newValue;
+    skipDiscarded = options.skipDiscarded.newValue;
+    skipCycling = options.skipCycling.newValue;
+    skipGroups = options.skipGroups.newValue;
+    enableScrollWindow = options.enableScrollWindow.newValue;
+    windowScrollMult = options.windowScrollMult.newValue;
+    doubleClickEnabled = options.doubleClickEnabled.newValue;
+    doubleClickSpeed = options.doubleClickSpeed.newValue;
+
+    const self = await browser.management.getSelf();
+    if (disableScrolling) {
+        unlockTSTScrolling(self);
+    } else {
+        lockTSTScrolling(self);
+    }
+}
+
 async function registerToTST() {
+    const self = await browser.management.getSelf();
     try {
-        const self = await browser.management.getSelf();
         let result = await browser.runtime.sendMessage(kTST_ID, {
             type: 'register-self',
             name: self.id,
@@ -107,12 +114,12 @@ async function registerToTST() {
         if (disableScrolling === false) {
             lockTSTScrolling();
         }
-        console.log("tst-wheel_and_double registration successful");
+        console.log(self.id +  " registration successful");
         registrationStatus = true;
         return true;
     }
     catch (ex) {
-        console.log("tst-wheel_and_double registration failed with " + ex);
+        console.log(self.id + " registration failed with " + ex);
         return false;
     }
 }
@@ -176,22 +183,34 @@ async function onMessageExternal(aMessage, aSender) {
             }
         });
     } catch (exc) {
-        console.error(self.id + " exception: " + exc);
+        console.error(self.id + " onMessageExternal failed with " + exc);
     }
 
     return false;
 }
 
-async function lockTSTScrolling() {
-    browser.runtime.sendMessage(kTST_ID, {
-        type: 'scroll-lock'
-    });
+async function lockTSTScrolling(self) {
+    try {
+        browser.runtime.sendMessage(kTST_ID, {
+            type: 'scroll-lock'
+        });
+    }
+    catch (ex) {
+        console.log(self.id + " lockTSTScrolling failed with " + ex);
+        return false;
+    }
 }
 
-async function unlockTSTScrolling() {
-    browser.runtime.sendMessage(kTST_ID, {
-        type: 'scroll-unlock'
-    });
+async function unlockTSTScrolling(self) {
+    try {
+        browser.runtime.sendMessage(kTST_ID, {
+            type: 'scroll-unlock'
+        });
+    }
+    catch (ex) {
+        console.log(self.id + " unlockTSTScrolling failed with " + ex);
+        return false;
+    }
 }
 
 async function handleScroll(aMessage) {
@@ -201,7 +220,7 @@ async function handleScroll(aMessage) {
 
     let tstTabs = aMessage.tabs;
     // let activeTabIndex = tstTabs.findIndex(tab => tab.active);
-    // NOTE: `tstTabs` could contain staled data since multiple wheel events can be emitted before `browser.tabs.update()`.
+    // NOTE: `tstTabs` could contain stale data since multiple wheel events can be emitted before `browser.tabs.update()`.
     // NOTE: So we use `browser.tabs.query()` to find out the current active tab.
     let activeTabs = await browser.tabs.query({
         windowId: aMessage.windowId || aMessage.window,
@@ -253,15 +272,10 @@ async function handleWindowScroll(aMessage) {
     }
     previousScrollTime = now;
 
-    function isNumeric(str) {
-        if (typeof str != "string") return false
-        return !isNaN(str) && !isNaN(parseFloat(str))
-    }
-
     let window = aMessage.window;
     let delta = aMessage.deltaY;
     delta = scrollingInverted ? -delta : delta;
-    if (isNumeric(windowScrollMult) && windowScrollMult > 0.01) {
+    if (windowScrollMult > 0.01) {
         delta = delta * windowScrollMult;
     }
 
@@ -282,6 +296,8 @@ async function handleTabClick(aMessage) {
 
     const now = Date.now();
     if (previousTabId === aMessage.tab.id && now - previousClickTime < doubleClickSpeed) {
+        previousClickTime = 0;
+        previousTabId = null;
         await browser.tabs.reload(aMessage.tab.id);
         return true;
     }
