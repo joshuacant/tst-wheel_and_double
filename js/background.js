@@ -3,29 +3,30 @@
 let registrationStatus = false;
 const kTST_ID = 'treestyletab@piro.sakura.ne.jp';
 async function _init() {
-    const self = await browser.management.getSelf();
-    console.log(self.id + " loading");
+    const gettingSelf = await browser.management.getSelf();
+    console.log(gettingSelf.id + " loading");
+    await loadOptions(gettingSelf);
 
-    await loadOptions(self);
-
+    let registrationTimeout = 0;
     function timeout(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    let registrationTimeout = 0;
     while (registrationStatus === false) {
         // try multiple times to register, slowly backing off to once every 5 seconds
         await timeout(registrationTimeout);
-        console.log(self.id + " registering to " + kTST_ID);
+        console.log(gettingSelf.id + " registering to " + kTST_ID);
         try {
             if (await browser.runtime.sendMessage(kTST_ID, { type: 'ping' })) {
                 await registerToTST();
             }
+        } catch (exc) {
+            console.log(gettingSelf.id + " registering to " + kTST_ID + " failed " + exc);
         }
-        catch (exc) { console.log(self.id + " registering to " + kTST_ID + " failed " + exc); }
         registrationTimeout = Math.min((registrationTimeout + 1000), 5000);
     }
 
+    self.setInterval(() => browser.runtime.getPlatformInfo(), 2e4);
+    await setupTSTScrolling();
     browser.storage.onChanged.addListener(reloadOptions);
     browser.runtime.onMessageExternal.addListener(onMessageExternal);
 }
@@ -40,10 +41,10 @@ let enableScrollWindow = false;
 let windowScrollMult = '1';
 let doubleClickEnabled = true;
 let doubleClickSpeed = '250';
-async function loadOptions(self) {
+async function loadOptions(gettingSelf) {
     let options = await browser.storage.local.get();
     if (Object.keys(options).length == 0) {
-        await createOptions(self);
+        await createOptions(gettingSelf);
     }
     else {
         disableScrolling = options.disableScrolling;
@@ -57,16 +58,10 @@ async function loadOptions(self) {
         doubleClickEnabled = options.doubleClickEnabled;
         doubleClickSpeed = options.doubleClickSpeed;
     }
-
-    if (disableScrolling) {
-        unlockTSTScrolling(self);
-    } else {
-        lockTSTScrolling(self);
-    }
 }
 
-async function createOptions(self) {
-    console.log(self.id + " creating options");
+async function createOptions(gettingSelf) {
+    console.log(gettingSelf.id + " creating options");
     await browser.storage.local.set({
         disableScrolling: disableScrolling,
         scrollingInverted: scrollingInverted,
@@ -95,28 +90,28 @@ async function reloadOptions(options) {
     doubleClickEnabled = options.doubleClickEnabled.newValue;
     doubleClickSpeed = options.doubleClickSpeed.newValue;
 
-    const self = await browser.management.getSelf();
-    if (disableScrolling) {
-        unlockTSTScrolling(self);
-    } else {
-        lockTSTScrolling(self);
-    }
+    await setupTSTScrolling();
 }
 
 async function registerToTST() {
-    const self = await browser.management.getSelf();
+    const gettingSelf = await browser.management.getSelf();
     try {
         let result = await browser.runtime.sendMessage(kTST_ID, {
             type: 'register-self',
-            name: self.id,
+            name: gettingSelf.id,
             listeningTypes: ['scrolled', 'tab-clicked', 'ready'],
         });
-        console.log(self.id +  " registration successful");
-        registrationStatus = true;
-        return true;
-    }
-    catch (ex) {
-        console.log(self.id + " registration failed with " + ex);
+        if (result != null) {
+            console.log(gettingSelf.id +  " registration successful");
+            registrationStatus = true;
+            return true;
+        }
+        else {
+            console.log(gettingSelf.id +  " registration failed");
+            return false;
+        }
+    } catch (exc) {
+        console.log(gettingSelf.id + " registration failed with " + exc);
         return false;
     }
 }
@@ -149,7 +144,7 @@ async function mutex(task) {
 }
 
 async function onMessageExternal(aMessage, aSender) {
-    const self = await browser.management.getSelf();
+    const gettingSelf = await browser.management.getSelf();
 
     if (aSender.id !== kTST_ID) {
         return false;
@@ -163,42 +158,32 @@ async function onMessageExternal(aMessage, aSender) {
                 case ('tab-clicked'):
                     return await handleTabClick(aMessage);
                 case ('ready'):
-                    console.log(self.id + " re-registering due to ready message");
+                    console.log(gettingSelf.id + " re-registering due to ready message");
                     return await registerToTST();
                 case ('permissions-changed'):
-                    console.log(self.id + " re-registering due to permissions-changed message");
+                    console.log(gettingSelf.id + " re-registering due to permissions-changed message");
                     return await registerToTST();
                 default:
                     return false;
             }
         });
     } catch (exc) {
-        console.error(self.id + " onMessageExternal failed with " + exc);
+        console.error(gettingSelf.id + " onMessageExternal failed with " + exc);
     }
 
     return false;
 }
 
-async function lockTSTScrolling(self) {
+async function setupTSTScrolling() {
+    const gettingSelf = await browser.management.getSelf();
     try {
-        browser.runtime.sendMessage(kTST_ID, {
-            type: 'scroll-lock'
-        });
-    }
-    catch (ex) {
-        console.log(self.id + " lockTSTScrolling failed with " + ex);
-        return false;
-    }
-}
-
-async function unlockTSTScrolling(self) {
-    try {
-        browser.runtime.sendMessage(kTST_ID, {
-            type: 'scroll-unlock'
-        });
-    }
-    catch (ex) {
-        console.log(self.id + " unlockTSTScrolling failed with " + ex);
+        if (disableScrolling) {
+            await browser.runtime.sendMessage(kTST_ID, { type: 'scroll-unlock' });
+        } else {
+            await browser.runtime.sendMessage(kTST_ID, { type: 'scroll-lock' });
+        }
+    } catch (exc) {
+        console.log(gettingSelf.id + " setupTSTScrolling failed with " + exc);
         return false;
     }
 }
